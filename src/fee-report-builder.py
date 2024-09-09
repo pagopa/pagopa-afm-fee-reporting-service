@@ -1,16 +1,10 @@
 #!/usr/local/bin/python3
-import datetime
 import json
 import logging
 import os
-from datetime import datetime
 import boto3
-from time import sleep
-
 import azure.cosmos.cosmos_client as cosmos_client
 import psycopg
-
-import numbers
 import decimal
 
 
