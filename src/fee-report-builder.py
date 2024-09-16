@@ -157,7 +157,8 @@ def get_wisp_bundles(connection):
             es.costo_fisso,
             es.tipo_vers_cod,
             es.canale_id,
-            es.canale_app
+            es.canale_app,
+            es.carrello_carte
         from
             elenco_servizi es
         where 1=1
@@ -215,12 +216,13 @@ def get_wisp_bundles(connection):
         # carte and conto management
         payment_type: str = data[10]
         canale_app: str = data[12]
-        carte: bool = payment_type == "CP"
+        carrello_carte: str = data[13]
+        carte: bool = payment_type == "CP" and carrello_carte == "Y" and canale_app == "N"
         conto: bool = payment_type in ['BBT', 'BP', 'MYBK', 'AD'] and canale_app == 'N'
 
         # altri_io and altri_wisp management
-        altri_io: bool = payment_type in ["PPAL", "PPAL"] and canale_app == 'Y'
-        altri_wisp: bool = payment_type != "CP" and canale_app == 'Y'
+        altri_io: bool = (canale_app == "Y" and payment_type == "PPAL") or (payment_type == "BPAY")
+        altri_wisp: bool = payment_type != "PPAL" and canale_app == 'Y'
 
         # ABI code management
         abi = data[2]
@@ -292,27 +294,28 @@ def get_gec_bundles():
 
         # carte and conto management
         payment_type: str = str(item['paymentType'])
-        carte: bool = payment_type == "CP"
-        conto: bool = payment_type in ['BBT', 'BP', 'MYBK', 'AD']
+        cart: bool = bool(item['paymentType'])
+        carte: bool = payment_type == "CP" and cart
+        conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
 
         # altri_io and altri_wisp management
-        altri_io: bool = payment_type == "PPAL"
-        altri_wisp: bool = False
+        altri_io: bool = payment_type in ["PPAL", "BPAY"]
+        altri_wisp: bool = payment_type != "PPAL"
 
-        bundle = Bundle(str(item['idPsp']),
-                        str(item['pspBusinessName']),
-                        str(item['abi']),
-                        str(item['name']),
-                        str(item['description']),
-                        str(item['description']),
-                        str(item['urlPolicyPsp']),
-                        str(item['urlPolicyPsp']),
-                        round(float(item['minPaymentAmount']) / 100, 2),
-                        round(float(item['maxPaymentAmount']) / 100, 2),
-                        round(float(item['paymentAmount']) / 100, 2),
-                        "N/A",
-                        str(item['paymentType']),
-                        "N/A",
+        bundle = Bundle(str(item['idPsp']),                             # psp_id
+                        str(item['pspBusinessName']),                   # psp_rag_soc
+                        str(item['abi']),                               # codice_abi
+                        str(item['name']),                              # nome_servizio
+                        str(item['description']),                       # descrizione_canale_mod_pag
+                        str(item['description']),                       # inf_desc_servizio
+                        str(item['urlPolicyPsp']),                      # inf_url_canale
+                        str(item['urlPolicyPsp']),                      # url_informazioni_psp
+                        round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
+                        round(float(item['maxPaymentAmount']) / 100, 2),# importp_massimo
+                        round(float(item['paymentAmount']) / 100, 2),   # costo_fisso
+                        "N/A",                       # canale_mod_pag_code
+                        str(item['paymentType']),                       # tipo_vers_code
+                        "N/A",                            # canale_mod_pag
                         on_us,
                         carte,
                         conto,
@@ -359,14 +362,17 @@ def merge_bundles(old_bundles, new_bundles):
                str(int(bundle.importo_massimo)) + "_" +
                str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod))
 
-        if bundle.psp_id not in psp_dict:
-            psp_dict.append(bundle.psp_id)
+        bundle_key: str = bundle.psp_id + "_" + bundle.tipo_vers_cod
+        if bundle_key not in psp_dict:
+            psp_dict.append(bundle.psp_id + "_" + bundle.tipo_vers_cod)
 
         distinct_bundles[key] = bundle.serialize_bundle()
 
     for item in old_bundles:
         bundle: Bundle = item
-        if bundle.psp_id not in psp_dict:
+        bundle_key: str = bundle.psp_id + "_" + bundle.tipo_vers_cod
+
+        if bundle_key not in psp_dict:
             key = (str(bundle.psp_id) + "_" +
                    str(int(bundle.importo_minimo)) + "_" +
                    str(int(bundle.importo_massimo)) + "_" +
