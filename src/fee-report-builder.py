@@ -263,8 +263,14 @@ def get_gec_bundles():
     # getting cosmos db configuration
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
     KEY = os.environ["COSMOS_KEY"]
+
+    # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
     psp_blacklist = psp_blacklist.split(",")
+
+    # getting configured payment types
+    psp_payment_types = os.getenv("PAYMENT_TYPES")
+    p_type = json.loads(psp_payment_types)
 
     print("[get_gec_bundles] Creating cosmos db client")
     client = cosmos_client.CosmosClient(ENDPOINT, {'masterKey': KEY})
@@ -294,7 +300,7 @@ def get_gec_bundles():
 
         # carte and conto management
         payment_type: str = str(item['paymentType'])
-        cart: bool = bool(item['paymentType'])
+        cart: bool = True # after CHECKOUT_CART management consolidation -> bool(item['cart'])
         carte: bool = payment_type == "CP" and cart
         conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
 
@@ -302,10 +308,17 @@ def get_gec_bundles():
         altri_io: bool = payment_type in ["PPAL", "BPAY"]
         altri_wisp: bool = payment_type != "PPAL"
 
+        # nome_servizio management
+        nome_servizio: str = str(item['name'])
+        if str(item['paymentType']) in p_type:
+            nome_servizio = p_type[str(item['paymentType'])]
+        else:
+            logger.info(f"[get_gec_bundles] no configured payment type found for [{str(item['paymentType'])}]")
+
         bundle = Bundle(str(item['idPsp']),                             # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
                         str(item['abi']),                               # codice_abi
-                        str(item['name']),                              # nome_servizio
+                        nome_servizio,                                  # nome_servizio
                         str(item['description']),                       # descrizione_canale_mod_pag
                         str(item['description']),                       # inf_desc_servizio
                         str(item['urlPolicyPsp']),                      # inf_url_canale
