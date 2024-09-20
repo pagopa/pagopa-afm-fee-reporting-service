@@ -28,7 +28,8 @@ class Bundle:
                  conto,
                  altri_wisp,
                  altri_io,
-                 is_duplicated):
+                 is_duplicated,
+                 conto_app):
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -49,6 +50,8 @@ class Bundle:
         self.altri_wisp = altri_wisp
         self.altri_io = altri_io
         self.is_duplicated = is_duplicated
+        self.conto_app = conto_app
+
 
     def serialize_bundle(self) -> dict:
 
@@ -74,6 +77,7 @@ class Bundle:
             "altri_wisp": self.altri_wisp,
             "altri_io": self.altri_io,
             "is_duplicated": self.is_duplicated,
+            "conto_app": self.conto_app
         }
 
 
@@ -175,6 +179,9 @@ def get_wisp_bundles(connection):
     logger.info(f"[get_wisp_bundles] creating wisp bundles")
     for data in dataset:
 
+        if data[3] == "Paga con Postepay":
+            print("trovato")
+
         if str(data[0]) in psp_blacklist:
             continue
 
@@ -219,6 +226,7 @@ def get_wisp_bundles(connection):
         carrello_carte: str = data[13]
         carte: bool = payment_type == "CP" and carrello_carte == "Y" and canale_app == "N"
         conto: bool = payment_type in ['BBT', 'BP', 'MYBK', 'AD'] and canale_app == 'N'
+        conto_app: bool = payment_type in ["MYBK"]
 
         # altri_io and altri_wisp management
         altri_io: bool = (canale_app == "Y" and payment_type == "PPAL") or (payment_type == "BPAY")
@@ -232,26 +240,27 @@ def get_wisp_bundles(connection):
                 abi = psp_code[id_psp]
                 logger.info(f"[get_wisp_bundles] fixed abi for psp [{id_psp}]")
 
-        bundle = Bundle(data[0],  # idPsp
-                        data[1],  # psp_rag_soc
-                        abi,      # codice_abi
-                        data[3],  # nome_servizio
-                        descrizione_canale_mod_pag,  # descrizione_canale_mod_pag
-                        data[5],  # inf_desc_serv
-                        data[6],  # inf_url_canale
-                        url_informazioni_psp,  # url_informazioni_psp
-                        data[7],  # importo_minimo
-                        data[8],  # importo_massimo
-                        data[9],  # costo_fisso
-                        canale_mod_pag_code,  # canale_mod_pag_code
-                        payment_type,  # tipo_vers_cod
-                        canale_mod_pag,  # canale_mod_pag
-                        on_us,  # on_us
-                        carte,  # carte
-                        conto,  # conto
-                        altri_wisp,  # altri_wisp
-                        altri_io,  # altri_io
-                        False)  # is_duplicated
+        bundle = Bundle(data[0],                    # idPsp
+                        data[1],                    # psp_rag_soc
+                        abi,                        # codice_abi
+                        data[3],                    # nome_servizio
+                        descrizione_canale_mod_pag, # descrizione_canale_mod_pag
+                        data[5],                    # inf_desc_serv
+                        data[6],                    # inf_url_canale
+                        url_informazioni_psp,       # url_informazioni_psp
+                        data[7],                    # importo_minimo
+                        data[8],                    # importo_massimo
+                        data[9],                    # costo_fisso
+                        canale_mod_pag_code,        # canale_mod_pag_code
+                        payment_type,               # tipo_vers_cod
+                        canale_mod_pag,             # canale_mod_pag
+                        on_us,                      # on_us
+                        carte,                      # carte
+                        conto,                      # conto
+                        altri_wisp,                 # altri_wisp
+                        altri_io,                   # altri_io
+                        False,          # is_duplicated
+                        conto_app)
         bundles.append(bundle)
         count += 1
     cursor.close()
@@ -263,8 +272,14 @@ def get_gec_bundles():
     # getting cosmos db configuration
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
     KEY = os.environ["COSMOS_KEY"]
+
+    # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
     psp_blacklist = psp_blacklist.split(",")
+
+    # getting configured payment types
+    psp_payment_types = os.getenv("PAYMENT_TYPES")
+    p_type = json.loads(psp_payment_types)
 
     print("[get_gec_bundles] Creating cosmos db client")
     client = cosmos_client.CosmosClient(ENDPOINT, {'masterKey': KEY})
@@ -294,34 +309,45 @@ def get_gec_bundles():
 
         # carte and conto management
         payment_type: str = str(item['paymentType'])
-        cart: bool = bool(item['paymentType'])
+        cart: bool = True # after CHECKOUT_CART management consolidation -> bool(item['cart'])
         carte: bool = payment_type == "CP" and cart
         conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
+        conto_app: bool = payment_type in ["MYBK"]
 
         # altri_io and altri_wisp management
+        #- AppIO - Carte PPAL MYBK BancomatPay
         altri_io: bool = payment_type in ["PPAL", "BPAY"]
-        altri_wisp: bool = payment_type != "PPAL"
+        altri_wisp: bool = payment_type != "PPAL" and payment_type != "CP" and not conto
 
-        bundle = Bundle(str(item['idPsp']),                             # psp_id
-                        str(item['pspBusinessName']),                   # psp_rag_soc
-                        str(item['abi']),                               # codice_abi
-                        str(item['name']),                              # nome_servizio
-                        str(item['description']),                       # descrizione_canale_mod_pag
-                        str(item['description']),                       # inf_desc_servizio
-                        str(item['urlPolicyPsp']),                      # inf_url_canale
-                        str(item['urlPolicyPsp']),                      # url_informazioni_psp
-                        round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
-                        round(float(item['maxPaymentAmount']) / 100, 2),# importp_massimo
-                        round(float(item['paymentAmount']) / 100, 2),   # costo_fisso
-                        "N/A",                       # canale_mod_pag_code
-                        str(item['paymentType']),                       # tipo_vers_code
-                        "N/A",                            # canale_mod_pag
+
+        # nome_servizio management
+        nome_servizio: str = str(item['name'])
+        if str(item['paymentType']) in p_type:
+            nome_servizio = p_type[str(item['paymentType'])]
+        else:
+            logger.info(f"[get_gec_bundles] no configured payment type found for [{str(item['paymentType'])}]")
+
+        bundle = Bundle(str(item['idPsp']),                                 # psp_id
+                        str(item['pspBusinessName']),                       # psp_rag_soc
+                        str(item['abi']),                                   # codice_abi
+                        nome_servizio,                                      # nome_servizio
+                        str(item['description']),                           # descrizione_canale_mod_pag
+                        str(item['description']),                           # inf_desc_servizio
+                        str(item['urlPolicyPsp']),                          # inf_url_canale
+                        str(item['urlPolicyPsp']),                          # url_informazioni_psp
+                        round(float(item['minPaymentAmount']) / 100, 2),    # importo_minimo
+                        round(float(item['maxPaymentAmount']) / 100, 2),    # importp_massimo
+                        round(float(item['paymentAmount']) / 100, 2),       # costo_fisso
+                        "N/A",                          # canale_mod_pag_code
+                        str(item['paymentType']),                           # tipo_vers_code
+                        "N/A",                              # canale_mod_pag
                         on_us,
                         carte,
                         conto,
                         altri_wisp,
                         altri_io,
-                        False)
+                        False,
+                        conto_app)
         count = count + 1
         bundles.append(bundle)
 
@@ -353,7 +379,12 @@ def build_json_file(bundles: {}):
 
 def merge_bundles(old_bundles, new_bundles):
     distinct_bundles = {}
-    psp_dict = []
+
+    # dict used to not duplicate bundles from old and new management in case of not matching amount range
+    psp_dict = ["SATYLUL1_BBT",
+                "PAYTITM1_PPAL",
+                "BCITITMM_JIF",
+                "PPAYITR1XXX_BBT"] # the list contains blacklisted PSP/payment type tuple
 
     for item in new_bundles:
         bundle: Bundle = item

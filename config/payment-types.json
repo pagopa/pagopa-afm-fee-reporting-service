@@ -1,0 +1,21 @@
+{
+  "SATY": "Satispay",
+  "RPIC": "Conto Intesa Sanpaolo",
+  "RICO": "Pago in Conto IConto",
+  "RBPS": "Conto Banca Popolare di Sondrio",
+  "RBPR": "Conto BancoPosta",
+  "RBPP": "Paga con Postepay",
+  "RBPB": "Conto BancoPostaImpresa",
+  "PPAL": "PayPal",
+  "PO": "Pagamento attivato presso PSP",
+  "OBEP": "Online Banking Electronic Payment",
+  "MYBK": "MyBank",
+  "JIF": "Jiffy",
+  "CP": "Carta di debito o credito",
+  "BPAY": "Bancomat Pay",
+  "BP": "Bollettino postale",
+  "BBT": "Bonifico bancario telematico",
+  "APPL": "Apple Pay",
+  "AD": "Addebito diretto",
+  "GOOG": "Google Pay"
+}
