@@ -1,9 +1,9 @@
-schedule: "0 0 * * *"  # Esegui ogni giorno a mezzanotte
+schedule: "0 0 * * *"
 image:
   repository: "python"
   tag: "3.9-slim"
   pullPolicy: "IfNotPresent"
-script: "print('Hello from production environment')"  # Script Python eseguito per produzione
+script: "print('Hello from default environment')"
 restartPolicy: "OnFailure"
 
 resources:
