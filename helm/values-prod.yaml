@@ -1,4 +1,4 @@
-schedule: "0 0 * * *"
+schedule: "0 3 * * *" # every night at 03:00 AM
 
 resources:
   limits:
