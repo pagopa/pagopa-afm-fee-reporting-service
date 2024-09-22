@@ -1,10 +1,9 @@
 apiVersion: v2
-name: pagopa-afm-calculator
-description: Microservice that handles calculation for pagoPA Advanced Fees Management
-type: application
-version: 0.0.0
-appVersion: 0.0.0
+name: pagopa-afm-fee-reporting-cronjob
+description: Microservice that handle the creation of json report about the fees applied by PSPs
+version: 1.0.0
 dependencies:
-  - name: microservice-chart
-    version: 5.9.0
-    repository: "https://pagopa.github.io/aks-microservice-chart-blueprint"
+  - name: cron-chart
+    version: 1.19.0
+    repository: "https://pagopa.github.io/aks-cron-chart-blueprint"
+
