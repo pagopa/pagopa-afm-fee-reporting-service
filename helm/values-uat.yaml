@@ -1,13 +1,5 @@
 schedule: "0 */4 * * *" # every four hours
 
-resources:
-  limits:
-    cpu: "400m"
-    memory: "512Mi"
-  requests:
-    cpu: "200m"
-    memory: "256Mi"
-
 image:
   tag: uat
 

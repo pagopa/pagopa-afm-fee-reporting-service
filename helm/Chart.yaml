@@ -4,6 +4,6 @@ description: Microservice that handle the creation of json report about the fees
 version: 1.0.0
 dependencies:
   - name: cron-chart
-    version: 1.19.0
+    version: 1.19.0 # verificare
     repository: "https://pagopa.github.io/aks-cron-chart-blueprint"
 
