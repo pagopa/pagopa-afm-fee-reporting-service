@@ -29,7 +29,8 @@ class Bundle:
                  altri_wisp,
                  altri_io,
                  is_duplicated,
-                 conto_app):
+                 conto_app,
+                 carte_app):
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -51,6 +52,8 @@ class Bundle:
         self.altri_io = altri_io
         self.is_duplicated = is_duplicated
         self.conto_app = conto_app
+        self.carte_app = carte_app
+
 
 
     def serialize_bundle(self) -> dict:
@@ -77,7 +80,8 @@ class Bundle:
             "altri_wisp": self.altri_wisp,
             "altri_io": self.altri_io,
             "is_duplicated": self.is_duplicated,
-            "conto_app": self.conto_app
+            "conto_app": self.conto_app,
+            "carte_app": self.carte_app
         }
 
 
@@ -162,7 +166,8 @@ def get_wisp_bundles(connection):
             es.tipo_vers_cod,
             es.canale_id,
             es.canale_app,
-            es.carrello_carte
+            es.carrello_carte,
+            es.flag_io
         from
             elenco_servizi es
         where 1=1
@@ -227,6 +232,10 @@ def get_wisp_bundles(connection):
         carte: bool = payment_type == "CP" and carrello_carte == "Y" and canale_app == "N"
         conto: bool = payment_type in ['BBT', 'BP', 'MYBK', 'AD'] and canale_app == 'N'
         conto_app: bool = payment_type in ["MYBK"]
+        # at the moment carte_app fixed to True
+        # io: str = str(data[14])
+        # carte_app: bool = carte and io.lower() == "y"
+        carte_app: bool = carte
 
         # altri_io and altri_wisp management
         altri_io: bool = (canale_app == "Y" and payment_type == "PPAL") or (payment_type == "BPAY")
@@ -259,8 +268,10 @@ def get_wisp_bundles(connection):
                         conto,                      # conto
                         altri_wisp,                 # altri_wisp
                         altri_io,                   # altri_io
-                        False,          # is_duplicated
-                        conto_app)
+                        False,                      # is_duplicated
+                        conto_app,
+                        carte_app)
+        
         bundles.append(bundle)
         count += 1
     cursor.close()
@@ -313,6 +324,8 @@ def get_gec_bundles():
         carte: bool = payment_type == "CP" and cart
         conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
         conto_app: bool = payment_type in ["MYBK"]
+        touchpoint: str = str(item['touchpoint'])
+        carte_app: bool = carte and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
@@ -347,7 +360,8 @@ def get_gec_bundles():
                         altri_wisp,
                         altri_io,
                         False,
-                        conto_app)
+                        conto_app,
+                        carte_app)
         count = count + 1
         bundles.append(bundle)
 
