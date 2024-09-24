@@ -18,7 +18,7 @@ envConfig:
 
 envSecret:
   COSMOS_KEY: afm-fee-reporting-p-cosmos-key
-  DB_PASSWORD: afm-fee-reporting-p-db-password
+  DB_PASSWORD: db-cfg-password-read
   S3_ACCESS_KEY_ID: afm-fee-reporting-p-s3-key-id
   S3_ACCESS_KEY_SECRET: afm-fee-reporting-p-s3-key-secret
 
