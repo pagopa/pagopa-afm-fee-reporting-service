@@ -19,8 +19,8 @@ envConfig:
 envSecret:
   COSMOS_KEY: afm-fee-reporting-d-cosmos-pkey
   DB_PASSWORD: db-cfg-password-read
-  S3_ACCESS_KEY_ID: afm-fee-reporting-d-s3-key-id
-  S3_ACCESS_KEY_SECRET: afm-fee-reporting-d-s3-key-secret
+  S3_ACCESS_KEY_ID: afm-fee-reporting-s3-key-id
+  S3_ACCESS_KEY_SECRET: afm-fee-reporting-s3-key-secret
 
 keyvault:
   name: "pagopa-d-afm-kv"

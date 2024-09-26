@@ -28,7 +28,10 @@ class Bundle:
                  conto,
                  altri_wisp,
                  altri_io,
-                 is_duplicated):
+                 is_duplicated,
+                 conto_app,
+                 carte_app,
+                 touchpoint):
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -49,6 +52,11 @@ class Bundle:
         self.altri_wisp = altri_wisp
         self.altri_io = altri_io
         self.is_duplicated = is_duplicated
+        self.conto_app = conto_app
+        self.carte_app = carte_app
+        self.touchpoint = touchpoint
+
+
 
     def serialize_bundle(self) -> dict:
 
@@ -232,26 +240,30 @@ def get_wisp_bundles(connection):
                 abi = psp_code[id_psp]
                 logger.info(f"[get_wisp_bundles] fixed abi for psp [{id_psp}]")
 
-        bundle = Bundle(data[0],  # idPsp
-                        data[1],  # psp_rag_soc
-                        abi,      # codice_abi
-                        data[3],  # nome_servizio
-                        descrizione_canale_mod_pag,  # descrizione_canale_mod_pag
-                        data[5],  # inf_desc_serv
-                        data[6],  # inf_url_canale
-                        url_informazioni_psp,  # url_informazioni_psp
-                        data[7],  # importo_minimo
-                        data[8],  # importo_massimo
-                        data[9],  # costo_fisso
-                        canale_mod_pag_code,  # canale_mod_pag_code
-                        payment_type,  # tipo_vers_cod
-                        canale_mod_pag,  # canale_mod_pag
-                        on_us,  # on_us
-                        carte,  # carte
-                        conto,  # conto
-                        altri_wisp,  # altri_wisp
-                        altri_io,  # altri_io
-                        False)  # is_duplicated
+        bundle = Bundle(data[0],                    # idPsp
+                        data[1],                    # psp_rag_soc
+                        abi,                        # codice_abi
+                        data[3],                    # nome_servizio
+                        descrizione_canale_mod_pag, # descrizione_canale_mod_pag
+                        data[5],                    # inf_desc_serv
+                        data[6],                    # inf_url_canale
+                        url_informazioni_psp,       # url_informazioni_psp
+                        data[7],                    # importo_minimo
+                        data[8],                    # importo_massimo
+                        data[9],                    # costo_fisso
+                        canale_mod_pag_code,        # canale_mod_pag_code
+                        payment_type,               # tipo_vers_cod
+                        canale_mod_pag,             # canale_mod_pag
+                        on_us,                      # on_us
+                        carte,                      # carte
+                        conto,                      # conto
+                        altri_wisp,                 # altri_wisp
+                        altri_io,                   # altri_io
+                        False,                      # is_duplicated
+                        conto_app,
+                        carte_app,
+                        "NULL")
+        
         bundles.append(bundle)
         count += 1
     cursor.close()
@@ -271,7 +283,7 @@ def get_gec_bundles():
     database = client.get_database_client("db")
     container = database.get_container_client("validbundles")
 
-    sql = str("select * from c")
+    sql = str("select * from c where c.type=\"GLOBAL\"")
     logger.info(f"[get_gec_bundles] Executing query [{sql}]")
 
     # Enumerate the returned items
@@ -294,13 +306,25 @@ def get_gec_bundles():
 
         # carte and conto management
         payment_type: str = str(item['paymentType'])
-        cart: bool = bool(item['paymentType'])
-        carte: bool = payment_type == "CP" and cart
+        cart: bool = True # after CHECKOUT_CART management consolidation -> bool(item['cart'])
+        touchpoint: str = str(item['touchpoint'])
+        carte: bool = payment_type == "CP" and cart and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
+        carte_app: bool = payment_type == "CP" and cart and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
         conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
+        conto_app: bool = payment_type in ["MYBK"]
 
         # altri_io and altri_wisp management
-        altri_io: bool = payment_type in ["PPAL", "BPAY"]
-        altri_wisp: bool = payment_type != "PPAL"
+        #- AppIO - Carte PPAL MYBK BancomatPay
+        altri_io: bool = payment_type in ["PPAL", "BPAY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
+        altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
+
+
+        # nome_servizio management
+        nome_servizio: str = str(item['name'])
+        if str(item['paymentType']) in p_type:
+            nome_servizio = p_type[str(item['paymentType'])]
+        else:
+            logger.info(f"[get_gec_bundles] no configured payment type found for [{str(item['paymentType'])}]")
 
         bundle = Bundle(str(item['idPsp']),                             # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
@@ -321,7 +345,10 @@ def get_gec_bundles():
                         conto,
                         altri_wisp,
                         altri_io,
-                        False)
+                        False,
+                        conto_app,
+                        carte_app,
+                        touchpoint)
         count = count + 1
         bundles.append(bundle)
 
@@ -360,7 +387,7 @@ def merge_bundles(old_bundles, new_bundles):
         key = (str(bundle.psp_id) + "_" +
                str(int(bundle.importo_minimo)) + "_" +
                str(int(bundle.importo_massimo)) + "_" +
-               str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod))
+               str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod) + "_" + str(bundle.touchpoint))
 
         bundle_key: str = bundle.psp_id + "_" + bundle.tipo_vers_cod
         if bundle_key not in psp_dict:
