@@ -1,0 +1,14 @@
+image:
+  repository: ghcr.io/pagopa/pagopa-afm-fee-reporting-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+
+schedule: "*/5 * * * *"

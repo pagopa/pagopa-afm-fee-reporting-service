@@ -30,7 +30,9 @@ class Bundle:
                  altri_io,
                  is_duplicated,
                  conto_app,
-                 carte_app):
+                 carte_app,
+                 touchpoint):
+      
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -53,7 +55,7 @@ class Bundle:
         self.is_duplicated = is_duplicated
         self.conto_app = conto_app
         self.carte_app = carte_app
-
+        self.touchpoint = touchpoint
 
 
     def serialize_bundle(self) -> dict:
@@ -270,7 +272,8 @@ def get_wisp_bundles(connection):
                         altri_io,                   # altri_io
                         False,                      # is_duplicated
                         conto_app,
-                        carte_app)
+                        carte_app,
+                        "NULL")
         
         bundles.append(bundle)
         count += 1
@@ -297,7 +300,7 @@ def get_gec_bundles():
     database = client.get_database_client("db")
     container = database.get_container_client("validbundles")
 
-    sql = str("select * from c")
+    sql = str("select * from c where c.type=\"GLOBAL\"")
     logger.info(f"[get_gec_bundles] Executing query [{sql}]")
 
     # Enumerate the returned items
@@ -321,16 +324,16 @@ def get_gec_bundles():
         # carte and conto management
         payment_type: str = str(item['paymentType'])
         cart: bool = True # after CHECKOUT_CART management consolidation -> bool(item['cart'])
-        carte: bool = payment_type == "CP" and cart
+        touchpoint: str = str(item['touchpoint'])
+        carte: bool = payment_type == "CP" and cart and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
+        carte_app: bool = payment_type == "CP" and cart and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
         conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
         conto_app: bool = payment_type in ["MYBK"]
-        touchpoint: str = str(item['touchpoint'])
-        carte_app: bool = carte and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
-        altri_io: bool = payment_type in ["PPAL", "BPAY"]
-        altri_wisp: bool = payment_type != "PPAL" and payment_type != "CP" and not conto
+        altri_io: bool = payment_type in ["PPAL", "BPAY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
+        altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
 
 
         # nome_servizio management
@@ -340,20 +343,20 @@ def get_gec_bundles():
         else:
             logger.info(f"[get_gec_bundles] no configured payment type found for [{str(item['paymentType'])}]")
 
-        bundle = Bundle(str(item['idPsp']),                                 # psp_id
-                        str(item['pspBusinessName']),                       # psp_rag_soc
-                        str(item['abi']),                                   # codice_abi
-                        nome_servizio,                                      # nome_servizio
-                        str(item['description']),                           # descrizione_canale_mod_pag
-                        str(item['description']),                           # inf_desc_servizio
-                        str(item['urlPolicyPsp']),                          # inf_url_canale
-                        str(item['urlPolicyPsp']),                          # url_informazioni_psp
-                        round(float(item['minPaymentAmount']) / 100, 2),    # importo_minimo
-                        round(float(item['maxPaymentAmount']) / 100, 2),    # importp_massimo
-                        round(float(item['paymentAmount']) / 100, 2),       # costo_fisso
-                        "N/A",                          # canale_mod_pag_code
-                        str(item['paymentType']),                           # tipo_vers_code
-                        "N/A",                              # canale_mod_pag
+        bundle = Bundle(str(item['idPsp']),                             # psp_id
+                        str(item['pspBusinessName']),                   # psp_rag_soc
+                        str(item['abi']),                               # codice_abi
+                        str(item['name']),                              # nome_servizio
+                        str(item['description']),                       # descrizione_canale_mod_pag
+                        str(item['description']),                       # inf_desc_servizio
+                        str(item['urlPolicyPsp']),                      # inf_url_canale
+                        str(item['urlPolicyPsp']),                      # url_informazioni_psp
+                        round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
+                        round(float(item['maxPaymentAmount']) / 100, 2),# importp_massimo
+                        round(float(item['paymentAmount']) / 100, 2),   # costo_fisso
+                        "N/A",                       # canale_mod_pag_code
+                        str(item['paymentType']),                       # tipo_vers_code
+                        "N/A",                            # canale_mod_pag
                         on_us,
                         carte,
                         conto,
@@ -361,7 +364,8 @@ def get_gec_bundles():
                         altri_io,
                         False,
                         conto_app,
-                        carte_app)
+                        carte_app,
+                        touchpoint)
         count = count + 1
         bundles.append(bundle)
 
@@ -405,7 +409,7 @@ def merge_bundles(old_bundles, new_bundles):
         key = (str(bundle.psp_id) + "_" +
                str(int(bundle.importo_minimo)) + "_" +
                str(int(bundle.importo_massimo)) + "_" +
-               str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod))
+               str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod) + "_" + str(bundle.touchpoint))
 
         bundle_key: str = bundle.psp_id + "_" + bundle.tipo_vers_cod
         if bundle_key not in psp_dict:

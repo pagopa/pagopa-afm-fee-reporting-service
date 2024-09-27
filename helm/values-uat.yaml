@@ -1,119 +1,27 @@
-microservice-chart:
-  namespace: "your-namespace" # TODO: set your AKS namespace
-  nameOverride: ""
-  fullnameOverride: ""
-  image:
-    repository: ghcr.io/pagopa/yourname # TODO
-    tag: "0.0.0"
-    pullPolicy: Always
-  livenessProbe:
-    httpGet:
-      path: /actuator/health/liveness
-      port: 8080
-    initialDelaySeconds: 90
-    failureThreshold: 6
-    periodSeconds: 10
-  readinessProbe:
-    httpGet:
-      path: /actuator/health/readiness
-      port: 8080
-    initialDelaySeconds: 90
-    failureThreshold: 6
-    periodSeconds: 10
-  deployment:
-    create: true
-  service:
-    create: true
-    type: ClusterIP
-    ports:
-      - 8080
-  ingress:
-    create: true
-    host: "your.host" # TODO: set the host
-    path: /your-path-here/(.*) # TODO: set your path
-    servicePort: 8080
-  serviceAccount:
-    create: false
-    annotations: { }
-    name: ""
-  podAnnotations: { }
-  podSecurityContext:
-    seccompProfile:
-      type: RuntimeDefault
-  securityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop:
-        - all
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "0.25"
-    limits:
-      memory: "512Mi"
-      cpu: "0.25"
-  autoscaling:
-    enable: true
-    minReplica: 3
-    maxReplica: 10
-    pollingInterval: 10 # seconds
-    cooldownPeriod: 50 # seconds
-    triggers:
-      - type: cpu
-        metadata:
-          # Required
-          type: Utilization # Allowed types are 'Utilization' or 'AverageValue'
-          value: "75"
-  envConfig:
-    # TODO: set your name
-    WEBSITE_SITE_NAME: 'yourProjectName' # required to show cloud role name in application insights
-    ENV: 'azure-uat'
-    APP_LOGGING_LEVEL: 'DEBUG'
-    DEFAULT_LOGGING_LEVEL: 'INFO'
-    CORS_CONFIGURATION: '{"origins": ["*"], "methods": ["*"]}'
-    OTEL_SERVICE_NAME: # TODO
-    OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=uat"
-    OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.elastic-system.svc:4317"
-    OTEL_TRACES_EXPORTER: otlp
-    OTEL_METRICS_EXPORTER: otlp
-    OTEL_LOGS_EXPORTER: none
-    OTEL_TRACES_SAMPLER: "always_on"
-  envSecret:
-    # required
-    APPLICATIONINSIGHTS_CONNECTION_STRING: 'ai-u-connection-string'
-    OTEL_EXPORTER_OTLP_HEADERS: elastic-apm-secret-token
-  keyvault:
-    name: "pagopa-u-name-kv" #TODO
-    tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
-  nodeSelector: { }
-  tolerations: [ ]
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-          - matchExpressions:
-              - key: node_type
-                operator: In
-                values:
-                  - user
-  canaryDelivery:
-    create: true
-    ingress:
-      create: true
-      canary:
-        type: header
-        headerName: X-Canary
-        headerValue: canary
-        weightPercent: 0
-    service:
-      create: true
-    deployment:
-      create: true
-      image:
-        repository: ghcr.io/pagopa/yourname # TODO
-        tag: "0.0.0"
-        pullPolicy: Always
-      envConfig: { }
-      envSecret: { }
+schedule: "0 */4 * * *" # every four hours
 
+image:
+  tag: uat
+
+envConfig:
+  PYTHONUNBUFFERED: 1
+  COSMOS_ENDPOINT: https://pagopa-u-weu-afm-marketplace-cosmos-account.documents.azure.com:443/
+  DB_HOST: pagopa-u-weu-nodo-flexible-postgresql.postgres.database.azure.com
+  DB_NAME: nodo
+  DB_PORT: 6432
+  DB_USER: cfg_read
+  PAYMENT_TYPES: {   "SATY": "Satispay",   "RPIC": "Conto Intesa Sanpaolo",   "RICO": "Pago in Conto IConto",   "RBPS": "Conto Banca Popolare di Sondrio",   "RBPR": "Conto BancoPosta",   "RBPP": "Paga con Postepay",   "RBPB": "Conto BancoPostaImpresa",   "PPAL": "PayPal",   "PO": "Pagamento attivato presso PSP",   "OBEP": "Online Banking Electronic Payment",   "MYBK": "MyBank",   "JIF": "Jiffy",   "CP": "Carta di debito o credito",   "BPAY": "Bancomat Pay",   "BP": "Bollettino postale",   "BBT": "Bonifico bancario telematico",   "APPL": "Apple Pay",   "AD": "Addebito diretto",   "GOOG": "Google Pay" }
+  PSP_ABI_CODE: {     "CRPPIT2PXXX": "06230",     "BPPNIT2PXXX": "05336",     "BLPIIT21": "03083",     "RZSBIT2B": "03493",     "RZSBIT21001": "08112",     "RZSBIT21003": "08081",     "RZSBIT21005": "08035",     "RZSBIT21006": "08162",     "RZSBIT21007": "08307",     "RZSBIT21042": "08269",     "RZSBIT21036": "08249",     "RZSBIT21055": "08238",     "RZSBIT21009": "08020",     "RZSBIT21011": "08056",     "RZSBIT21012": "08117",     "RZSBIT21014": "08115",     "RZSBIT21015": "08110",     "RZSBIT21018": "08134",     "RZSBIT21019": "08133",     "RZSBIT21022": "08157",     "RZSBIT21023": "08302",     "RZSBIT21024": "08066",     "RZSBIT21025": "08175",     "RZSBIT21026": "08998",     "RZSBIT21027": "08183",     "RZSBIT21031": "08220",     "RZSBIT21032": "08233",     "RZSBIT21033": "08234",     "RZSBIT21034": "08244",     "RZSBIT21510": "08065",     "RZSBIT21040": "08285",     "RZSBIT21044": "08273",     "RZSBIT21045": "08273",     "RZSBIT21138": "08080",     "RZSBIT21048": "08255",     "RZSBIT21039": "08231",     "RZSBIT21013": "08307",     "RZSBIT21317": "08114",     "RZSBIT21049": "08086",     "RZSBIT21050": "08295",     "RZSBIT21052": "08148",     "RZSBIT21054": "08182",     "NIPSITR1": "36080",     "ITBBITM1": "32532",     "SENVITT1": "03211",     "POCAIT3C": "05372",     "BPBAIT3B": "05424",     "BAPPIT21": "05034",     "SELBIT2B": "03268",     "SEPFIT31XXX": "36063",     "CRBZIT2B": "06045",     "CRFEIT3F": "06150",     "RZSBIT21008": "08010",     "CIPYIT31": "36024",     "CIPYIT31K": "36024" }
+  PSP_BLACKLIST: ABI14156,POCAIT3C
+  REPORT_FILE_NAME: output_elenco_servizi.json
+  S3_BUCKET_NAME: pagopa-afm-u-st-fee
+
+envSecret:
+  COSMOS_KEY: afm-fee-reporting-u-cosmos-key
+  DB_PASSWORD: db-cfg-password-read
+  S3_ACCESS_KEY_ID: afm-fee-reporting-u-s3-key-id
+  S3_ACCESS_KEY_SECRET: afm-fee-reporting-u-s3-key-secret
+
+keyvault:
+  name: "pagopa-u-afm-kv"
+  tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
