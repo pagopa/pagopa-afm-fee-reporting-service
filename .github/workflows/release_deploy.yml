@@ -102,38 +102,38 @@ jobs:
 
 
   release:
-#    name: Create a New Release
-#    runs-on: ubuntu-latest
-#    needs: [ setup ]
-#    outputs:
-#      version: ${{ steps.release.outputs.version }}
-#    steps:
-#      - name: Make Release
-#        id: release
-#        uses: pagopa/github-actions-template/maven-release@v1.12.0
-#        with:
-#          semver: ${{ needs.setup.outputs.semver }}
-#          github_token: ${{ secrets.BOT_TOKEN_GITHUB }}
-#          beta: ${{ inputs.beta }}
-#          prerelease: ${{ inputs.environment != 'prod' }}
-#          skip_ci: false
-
-    name: Create Release
+    name: Create a New Release
     runs-on: ubuntu-latest
     needs: [ setup ]
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Make Release
+        id: release
+        uses: pagopa/github-actions-template/maven-release@v1.12.0
         with:
-          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN_GITHUB }}
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: ""
-          draft: false
-          prerelease: false
+          semver: ${{ needs.setup.outputs.semver }}
+          github_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          beta: ${{ inputs.beta }}
+          prerelease: ${{ inputs.environment != 'prod' }}
+          skip_ci: false
+
+#    name: Create Release
+#    runs-on: ubuntu-latest
+#    needs: [ setup ]
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v2
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@v1
+#        with:
+#          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN_GITHUB }}
+#          tag_name: ${{ github.ref }}
+#          release_name: Release ${{ github.ref }}
+#          body: ""
+#          draft: false
+#          prerelease: false
 
   image:
     needs: [ setup, release ]
