@@ -32,6 +32,7 @@ class Bundle:
                  conto_app,
                  carte_app,
                  touchpoint):
+      
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -55,7 +56,6 @@ class Bundle:
         self.conto_app = conto_app
         self.carte_app = carte_app
         self.touchpoint = touchpoint
-
 
 
     def serialize_bundle(self) -> dict:
@@ -82,6 +82,8 @@ class Bundle:
             "altri_wisp": self.altri_wisp,
             "altri_io": self.altri_io,
             "is_duplicated": self.is_duplicated,
+            "conto_app": self.conto_app,
+            "carte_app": self.carte_app
         }
 
 
@@ -166,7 +168,8 @@ def get_wisp_bundles(connection):
             es.tipo_vers_cod,
             es.canale_id,
             es.canale_app,
-            es.carrello_carte
+            es.carrello_carte,
+            es.flag_io
         from
             elenco_servizi es
         where 1=1
@@ -182,6 +185,9 @@ def get_wisp_bundles(connection):
     count = 0
     logger.info(f"[get_wisp_bundles] creating wisp bundles")
     for data in dataset:
+
+        if data[3] == "Paga con Postepay":
+            print("trovato")
 
         if str(data[0]) in psp_blacklist:
             continue
@@ -227,6 +233,11 @@ def get_wisp_bundles(connection):
         carrello_carte: str = data[13]
         carte: bool = payment_type == "CP" and carrello_carte == "Y" and canale_app == "N"
         conto: bool = payment_type in ['BBT', 'BP', 'MYBK', 'AD'] and canale_app == 'N'
+        conto_app: bool = payment_type in ["MYBK"]
+        # at the moment carte_app fixed to True
+        # io: str = str(data[14])
+        # carte_app: bool = carte and io.lower() == "y"
+        carte_app: bool = carte
 
         # altri_io and altri_wisp management
         altri_io: bool = (canale_app == "Y" and payment_type == "PPAL") or (payment_type == "BPAY")
@@ -275,8 +286,14 @@ def get_gec_bundles():
     # getting cosmos db configuration
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
     KEY = os.environ["COSMOS_KEY"]
+
+    # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
     psp_blacklist = psp_blacklist.split(",")
+
+    # getting configured payment types
+    psp_payment_types = os.getenv("PAYMENT_TYPES")
+    p_type = json.loads(psp_payment_types)
 
     print("[get_gec_bundles] Creating cosmos db client")
     client = cosmos_client.CosmosClient(ENDPOINT, {'masterKey': KEY})
@@ -380,7 +397,12 @@ def build_json_file(bundles: {}):
 
 def merge_bundles(old_bundles, new_bundles):
     distinct_bundles = {}
-    psp_dict = []
+
+    # dict used to not duplicate bundles from old and new management in case of not matching amount range
+    psp_dict = ["SATYLUL1_BBT",
+                "PAYTITM1_PPAL",
+                "BCITITMM_JIF",
+                "PPAYITR1XXX_BBT"] # the list contains blacklisted PSP/payment type tuple
 
     for item in new_bundles:
         bundle: Bundle = item
