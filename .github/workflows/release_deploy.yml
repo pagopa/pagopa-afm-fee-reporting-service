@@ -130,8 +130,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ needs.release.outputs.version }}
+          release_name: Release ${{ needs.release.outputs.version }}
           body: ""
           draft: false
           prerelease: false
