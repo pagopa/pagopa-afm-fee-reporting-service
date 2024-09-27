@@ -97,12 +97,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Setup python environment
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
       # Install dependencies
       - name: Install dependencies
         run: |
@@ -123,14 +117,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.VERSION }}
-          release_name: Release ${{ env.VERSION }}
+          tag_name: ${{ env.version }}
+          release_name: Release ${{ env.version }}
           body: ""
           draft: false
           prerelease: false
 
   image:
-    needs: [ setup ]
+    needs: [ setup, release ]
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     if: ${{ needs.setup.outputs.semver != 'skip' }}
@@ -140,11 +134,11 @@ jobs:
         uses: pagopa/github-actions-template/ghcr-build-push@v1.5.4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ env.VERSION }}
+          tag: ${{ env.version }}
 
   deploy_aks:
     name: Deploy on AKS
-    needs: [ setup, image ]
+    needs: [ setup, release, image ]
     if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     uses: ./.github/workflows/deploy_with_github_runner.yml
     with:
