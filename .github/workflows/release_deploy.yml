@@ -110,6 +110,8 @@ jobs:
       - name: Bump version
         id: bump_version
         run: |
+          git config --local user.email "pagopa-github-bot@pagopa.it"
+          git config --local user.name "pagopa-github-bot"
           python3 -m bumpversion --config-file bumpversion.cfg ${{github.event.inputs.release_type}}
           VERSION=$(python3 -c "import __version__; print(__version__.__version__)")
           echo "version=$VERSION" >> $GITHUB_ENV
