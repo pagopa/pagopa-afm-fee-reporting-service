@@ -115,6 +115,7 @@ jobs:
           python3 -m bumpversion --config-file bumpversion.cfg ${{github.event.inputs.release_type}}
           VERSION=$(python3 -c "import __version__; print(__version__.__version__)")
           echo "version=$VERSION" >> $GITHUB_ENV
+          git push --tag v$VERSION
 
       - name: Create Release
         id: release
