@@ -1,8 +1,11 @@
 apiVersion: v2
 name: pagopa-afm-fee-reporting-cronjob
 description: Microservice that handle the creation of json report about the fees applied by PSPs
-version: 1.0.0
+type: application
+version: 0.0.8
+appVersion: 0.0.8
 dependencies:
   - name: cron-chart
     version: 2.7.0
     repository: "https://pagopa.github.io/aks-cron-chart-blueprint"
+    alias: "cj-afm-fee-reporting"
