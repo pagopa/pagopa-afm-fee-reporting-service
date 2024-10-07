@@ -346,9 +346,9 @@ def get_gec_bundles():
         bundle = Bundle(str(item['idPsp']),                             # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
                         str(item['abi']),                               # codice_abi
-                        str(item['name']),                              # nome_servizio
-                        str(item['description']),                       # descrizione_canale_mod_pag
-                        str(item['description']),                       # inf_desc_servizio
+                        nome_servizio,                                  # nome_servizio
+                        nome_servizio,                                  # descrizione_canale_mod_pag
+                        nome_servizio,                                  # inf_desc_servizio
                         str(item['urlPolicyPsp']),                      # inf_url_canale
                         str(item['urlPolicyPsp']),                      # url_informazioni_psp
                         round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
