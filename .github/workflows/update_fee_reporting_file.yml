@@ -87,6 +87,7 @@ jobs:
           export CFG_DB_PASSWORD=${{ secrets.CFG_DB_PASSWORD }}
           export S3_ACCESS_KEY_ID=${{ secrets.S3_ACCESS_KEY_ID }}
           export S3_ACCESS_KEY_SECRET=${{ secrets.S3_ACCESS_KEY_SECRET }}
+          export S3_BUCKET_NAME="pagopa-afm-p-st-fee"
           export COSMOS_ENDPOINT="https://pagopa-p-weu-afm-marketplace-cosmos-account.documents.azure.com:443/"
           export DB_HOST="pagopa-p-weu-nodo-flexible-postgresql.postgres.database.azure.com"
           export DB_NAME="nodo"
@@ -99,6 +100,38 @@ jobs:
           
           cd ./src
           python fee-report-builder.py
+
+      - name: Create success payload
+        if: ${{ success() && inputs.notify }}
+        run: |
+          echo '{
+            "text": "✅ *Workflow completato con successo.*",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *Nuovo report generato* :point_right: https://pagopa-afm-p-st-fee.s3.eu-central-1.amazonaws.com/output_elenco_servizi.json"
+                }
+              }
+            ]
+          }' > ./src/payload.json
+
+      - name: Create failure payload
+        if: ${{ failure() && inputs.notify }}
+        run: |
+          echo '{
+            "text": "❌ *Errore* Il workflow è fallito.",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *Si è verificato un errore durante l'esecuzione del job*"
+                }
+              }
+            ]
+          }' > ./src/payload.json
 
       - name: Send notification to Slack
         id: slack
