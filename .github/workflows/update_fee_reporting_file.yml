@@ -1,7 +1,7 @@
 name: updateFeeReport
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 1 * * *'
 
   workflow_dispatch:
     inputs:
@@ -46,6 +46,10 @@ jobs:
           resource_group_name: ${{ vars.CONTAINER_APP_ENVIRONMENT_RESOURCE_GROUP_NAME }} # RG of the runner
           pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
           self_hosted_runner_image_tag: "latest"
+      - name: Install dependencies
+        run: |
+          export RUNNER_ALLOW_RUNASROOT="1"
+          sudo apt-get update && sudo apt-get install -y libpq-dev
 
   report_script:
     needs: [ create_runner ]
@@ -59,13 +63,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
       - name: Checkout
         id: checkout
         uses: actions/checkout@1f9a0c22da41e6ebfa534300ef656657ea2c6707
+
+      - name: Install dependencies
+        run: |
+          pip install -r ./src/requirements.txt
 
       - name: Login
         id: login
@@ -83,18 +87,51 @@ jobs:
           export CFG_DB_PASSWORD=${{ secrets.CFG_DB_PASSWORD }}
           export S3_ACCESS_KEY_ID=${{ secrets.S3_ACCESS_KEY_ID }}
           export S3_ACCESS_KEY_SECRET=${{ secrets.S3_ACCESS_KEY_SECRET }}
+          export S3_BUCKET_NAME="pagopa-afm-p-st-fee"
           export COSMOS_ENDPOINT="https://pagopa-p-weu-afm-marketplace-cosmos-account.documents.azure.com:443/"
           export DB_HOST="pagopa-p-weu-nodo-flexible-postgresql.postgres.database.azure.com"
           export DB_NAME="nodo"
           export DB_PORT="6432"
           export DB_USER="cfg"
-          export PAYMENT_TYPES="{   "SATY": "Satispay",   "RPIC": "Conto Intesa Sanpaolo",   "RICO": "Pago in Conto IConto",   "RBPS": "Conto Banca Popolare di Sondrio",   "RBPR": "Conto BancoPosta",   "RBPP": "Paga con Postepay",   "RBPB": "Conto BancoPostaImpresa",   "PPAL": "PayPal",   "PO": "Pagamento attivato presso PSP",   "OBEP": "Online Banking Electronic Payment",   "MYBK": "MyBank",   "JIF": "Jiffy",   "CP": "Carta di debito o credito",   "BPAY": "Bancomat Pay",   "BP": "Bollettino postale",   "BBT": "Bonifico bancario telematico",   "APPL": "Apple Pay",   "AD": "Addebito diretto",   "GOOG": "Google Pay" }"
-          export PSP_ABI_CODE="{     "CRPPIT2PXXX": "06230",     "BPPNIT2PXXX": "05336",     "BLPIIT21": "03083",     "RZSBIT2B": "03493",     "RZSBIT21001": "08112",     "RZSBIT21003": "08081",     "RZSBIT21005": "08035",     "RZSBIT21006": "08162",     "RZSBIT21007": "08307",     "RZSBIT21042": "08269",     "RZSBIT21036": "08249",     "RZSBIT21055": "08238",     "RZSBIT21009": "08020",     "RZSBIT21011": "08056",     "RZSBIT21012": "08117",     "RZSBIT21014": "08115",     "RZSBIT21015": "08110",     "RZSBIT21018": "08134",     "RZSBIT21019": "08133",     "RZSBIT21022": "08157",     "RZSBIT21023": "08302",     "RZSBIT21024": "08066",     "RZSBIT21025": "08175",     "RZSBIT21026": "08998",     "RZSBIT21027": "08183",     "RZSBIT21031": "08220",     "RZSBIT21032": "08233",     "RZSBIT21033": "08234",     "RZSBIT21034": "08244",     "RZSBIT21510": "08065",     "RZSBIT21040": "08285",     "RZSBIT21044": "08273",     "RZSBIT21045": "08273",     "RZSBIT21138": "08080",     "RZSBIT21048": "08255",     "RZSBIT21039": "08231",     "RZSBIT21013": "08307",     "RZSBIT21317": "08114",     "RZSBIT21049": "08086",     "RZSBIT21050": "08295",     "RZSBIT21052": "08148",     "RZSBIT21054": "08182",     "NIPSITR1": "36080",     "ITBBITM1": "32532",     "SENVITT1": "03211",     "POCAIT3C": "05372",     "BPBAIT3B": "05424",     "BAPPIT21": "05034",     "SELBIT2B": "03268",     "SEPFIT31XXX": "36063",     "CRBZIT2B": "06045",     "CRFEIT3F": "06150",     "RZSBIT21008": "08010",     "CIPYIT31": "36024",     "CIPYIT31K": "36024" }"
+          export PAYMENT_TYPES="{\"SATY\": \"Satispay\",\"RPIC\": \"Conto Intesa Sanpaolo\",\"RICO\": \"Pago in Conto IConto\",\"RBPS\": \"Conto Banca Popolare di Sondrio\",\"RBPR\": \"Conto BancoPosta\",\"RBPP\": \"Paga con Postepay\",\"RBPB\": \"Conto BancoPostaImpresa\",\"PPAL\": \"PayPal\",\"PO\": \"Pagamento attivato presso PSP\",\"OBEP\": \"Online Banking Electronic Payment\",\"MYBK\": \"MyBank\",\"JIF\": \"Jiffy\",\"CP\": \"Carta di debito o credito\",\"BPAY\": \"Bancomat Pay\",\"BP\": \"Bollettino postale\",\"BBT\": \"Bonifico bancario telematico\",\"APPL\": \"Apple Pay\",\"AD\": \"Addebito diretto\",\"GOOG\": \"Google Pay\" }"
+          export PSP_ABI_CODE="{  \"CRPPIT2PXXX\": \"06230\",  \"BPPNIT2PXXX\": \"05336\",  \"BLPIIT21\": \"03083\",  \"RZSBIT2B\": \"03493\",  \"RZSBIT21001\": \"08112\",  \"RZSBIT21003\": \"08081\",  \"RZSBIT21005\": \"08035\",  \"RZSBIT21006\": \"08162\",  \"RZSBIT21007\": \"08307\",  \"RZSBIT21042\": \"08269\",  \"RZSBIT21036\": \"08249\",  \"RZSBIT21055\": \"08238\",  \"RZSBIT21009\": \"08020\",  \"RZSBIT21011\": \"08056\",  \"RZSBIT21012\": \"08117\",  \"RZSBIT21014\": \"08115\",  \"RZSBIT21015\": \"08110\",  \"RZSBIT21018\": \"08134\",  \"RZSBIT21019\": \"08133\",  \"RZSBIT21022\": \"08157\",  \"RZSBIT21023\": \"08302\",  \"RZSBIT21024\": \"08066\",  \"RZSBIT21025\": \"08175\",  \"RZSBIT21026\": \"08998\",  \"RZSBIT21027\": \"08183\",  \"RZSBIT21031\": \"08220\",  \"RZSBIT21032\": \"08233\",  \"RZSBIT21033\": \"08234\",  \"RZSBIT21034\": \"08244\",  \"RZSBIT21510\": \"08065\",  \"RZSBIT21040\": \"08285\",  \"RZSBIT21044\": \"08273\",  \"RZSBIT21045\": \"08273\",  \"RZSBIT21138\": \"08080\",  \"RZSBIT21048\": \"08255\",  \"RZSBIT21039\": \"08231\",  \"RZSBIT21013\": \"08307\",  \"RZSBIT21317\": \"08114\",  \"RZSBIT21049\": \"08086\",  \"RZSBIT21050\": \"08295\",  \"RZSBIT21052\": \"08148\",  \"RZSBIT21054\": \"08182\",  \"NIPSITR1\": \"36080\",  \"ITBBITM1\": \"32532\",  \"SENVITT1\": \"03211\",  \"POCAIT3C\": \"05372\",  \"BPBAIT3B\": \"05424\",  \"BAPPIT21\": \"05034\",  \"SELBIT2B\": \"03268\",  \"SEPFIT31XXX\": \"36063\",  \"CRBZIT2B\": \"06045\",  \"CRFEIT3F\": \"06150\",  \"RZSBIT21008\": \"08010\",  \"CIPYIT31\": \"36024\",  \"CIPYIT31K\": \"36024\" }"
           export PSP_BLACKLIST="ABI14156,POCAIT3C"
           export REPORT_FILE_NAME="output_elenco_servizi.json"
-
+          
           cd ./src
           python fee-report-builder.py
+
+      - name: Create success payload
+        if: ${{ success() && inputs.notify }}
+        run: |
+          echo '{
+            "text": "✅ *Workflow completato con successo.*",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *Nuovo report generato* :point_right: https://pagopa-afm-p-st-fee.s3.eu-central-1.amazonaws.com/output_elenco_servizi.json"
+                }
+              }
+            ]
+          }' > ./src/payload.json
+
+      - name: Create failure payload
+        if: ${{ failure() && inputs.notify }}
+        run: |
+          echo '{
+            "text": "❌ *Errore* Il workflow è fallito.",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *Si è verificato un errore durante l'esecuzione del job*"
+                }
+              }
+            ]
+          }' > ./src/payload.json
 
       - name: Send notification to Slack
         id: slack
