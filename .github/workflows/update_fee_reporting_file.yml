@@ -29,7 +29,7 @@ permissions:
 jobs:
   create_runner:
     name: Create Runner
-    runs-on: ubuntu-22.04
+    runs-on: python:3.11
     environment:
       name: ${{(github.event.inputs == null && 'prod') || inputs.environment }}
     outputs:
@@ -46,9 +46,6 @@ jobs:
           resource_group_name: ${{ vars.CONTAINER_APP_ENVIRONMENT_RESOURCE_GROUP_NAME }} # RG of the runner
           pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
           self_hosted_runner_image_tag: "latest"
-      - name: Install dependencies
-        run: |
-          apt-get update && apt-get install -y libpq-dev
 
   report_script:
     needs: [ create_runner ]
