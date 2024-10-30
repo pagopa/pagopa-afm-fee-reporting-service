@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           export RUNNER_ALLOW_RUNASROOT="1"
-          apt-get update && apt-get install -y libpq-dev
+          sudo apt-get update && sudo apt-get install -y libpq-dev
 
   report_script:
     needs: [ create_runner ]
