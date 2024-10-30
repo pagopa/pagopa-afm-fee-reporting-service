@@ -32,7 +32,7 @@ class Bundle:
                  conto_app,
                  carte_app,
                  touchpoint):
-      
+
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -98,7 +98,7 @@ def bundles_equal(b1: Bundle, b2: Bundle) -> bool:
 def get_pg_connection():
     logger.info("[get_pg_connection] getting postgres connection parameters")
     db_user = os.getenv("DB_USER")
-    db_password = os.getenv("DB_PASSWORD")
+    db_password = os.getenv("CFG_DB_PASSWORD")
     db_name = os.getenv("DB_NAME")
     db_host = os.getenv("DB_HOST")
     db_port = os.getenv("DB_PORT")
@@ -274,7 +274,7 @@ def get_wisp_bundles(connection):
                         conto_app,
                         carte_app,
                         "NULL")
-        
+
         bundles.append(bundle)
         count += 1
     cursor.close()
@@ -285,7 +285,7 @@ def get_wisp_bundles(connection):
 def get_gec_bundles():
     # getting cosmos db configuration
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
-    KEY = os.environ["COSMOS_KEY"]
+    KEY = os.environ["AFM_COSMOS_KEY"]
 
     # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
@@ -346,9 +346,9 @@ def get_gec_bundles():
         bundle = Bundle(str(item['idPsp']),                             # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
                         str(item['abi']),                               # codice_abi
-                        str(item['name']),                              # nome_servizio
-                        str(item['description']),                       # descrizione_canale_mod_pag
-                        str(item['description']),                       # inf_desc_servizio
+                        nome_servizio,                                  # nome_servizio
+                        nome_servizio,                                  # descrizione_canale_mod_pag
+                        nome_servizio,                                  # inf_desc_servizio
                         str(item['urlPolicyPsp']),                      # inf_url_canale
                         str(item['urlPolicyPsp']),                      # url_informazioni_psp
                         round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
