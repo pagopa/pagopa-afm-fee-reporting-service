@@ -79,6 +79,9 @@ jobs:
       - name: Run reports
         shell: bash
         run: |
+          sudo apt-get update
+          sudo apt-get install libpq-dev
+          
           export AFM_COSMOS_KEY=${{ secrets.AFM_COSMOS_KEY }}
           export CFG_DB_PASSWORD=${{ secrets.CFG_DB_PASSWORD }}
           export S3_ACCESS_KEY_ID=${{ secrets.S3_ACCESS_KEY_ID }}
