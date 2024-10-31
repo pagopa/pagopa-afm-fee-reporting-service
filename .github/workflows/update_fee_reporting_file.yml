@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   create_runner:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: ${{ always() }}
     name: Create Runner
     runs-on: ubuntu-22.04
     environment:
@@ -53,6 +53,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y libpq-dev
 
   report_script:
+    if: ${{ always() }}
     needs: [ create_runner ]
     name: Report ${{(github.event.inputs == null && 'prod') || inputs.environment }}
     runs-on: [ self-hosted, "${{ needs.create_runner.outputs.runner_name }}" ]
@@ -147,8 +148,7 @@ jobs:
   cleanup_runner:
     name: Cleanup Runner
     needs: [ create_runner, report_script ]
-    #if: ${{ always() }}
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: ${{ always() }}
     runs-on: ubuntu-22.04
     environment: ${{(github.event.inputs == null && 'uat') || inputs.environment }}
     steps:
