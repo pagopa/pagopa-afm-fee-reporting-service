@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   create_runner:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     name: Create Runner
     runs-on: ubuntu-22.04
     environment:
@@ -146,7 +147,8 @@ jobs:
   cleanup_runner:
     name: Cleanup Runner
     needs: [ create_runner, report_script ]
-    if: ${{ always() }}
+    #if: ${{ always() }}
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     environment: ${{(github.event.inputs == null && 'uat') || inputs.environment }}
     steps:
