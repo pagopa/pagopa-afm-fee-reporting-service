@@ -1,9 +1,8 @@
 name: updateFeeReport
 on:
   schedule:
-    #- cron: '0 1 * * *'
-    - cron: '0/15 * * * *'
-
+    - cron: '0 1 * * *'
+    
   workflow_dispatch:
     inputs:
       environment:
