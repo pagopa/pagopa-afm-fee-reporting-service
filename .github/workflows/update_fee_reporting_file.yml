@@ -105,7 +105,7 @@ jobs:
           python fee-report-builder.py
 
       - name: Create success payload
-        if: ${{ success() && inputs.notify }}
+        if: ${{ success() && (inputs.notify || github.event_name == 'schedule') }}
         run: |
           echo '{
             "text": "✅ *Workflow completato con successo.*",
@@ -121,7 +121,7 @@ jobs:
           }' > ./src/payload.json
 
       - name: Create failure payload
-        if: ${{ failure() && inputs.notify }}
+        if: ${{ failure() && (inputs.notify || github.event_name == 'schedule') }}
         run: |
           echo '{
             "text": "❌ *Errore* Il workflow è fallito.",
