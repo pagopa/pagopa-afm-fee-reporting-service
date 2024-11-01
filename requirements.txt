@@ -1,0 +1,4 @@
+azure.cosmos
+boto3
+psycopg
+psycopg[binary,pool]
