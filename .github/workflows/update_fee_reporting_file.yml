@@ -25,8 +25,20 @@ permissions:
   contents: read
   deployments: write
 
-
 jobs:
+  approve_create_runner:
+    name: Execute auto-approve for 'Create Runner'
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs == null || github.event.inputs == 'prod' }}
+    steps:
+    
+      - name: Auto approve
+        uses: andrea-deri/auto-approve@042a1e58fa51acef74997dc9cebb1c665677d2ac
+        with:
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          environment: ${{ inputs.environment || 'prod' }}
+
   create_runner:
     if: ${{ always() }}
     name: Create Runner
@@ -51,6 +63,20 @@ jobs:
         run: |
           export RUNNER_ALLOW_RUNASROOT="1"
           sudo apt-get update && sudo apt-get install -y libpq-dev
+
+
+  approve_report_script:
+    name: Execute auto-approve for 'Report Script'
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs == null || github.event.inputs == 'prod' }}
+    steps:
+    
+      - name: Auto approve
+        uses: andrea-deri/auto-approve@042a1e58fa51acef74997dc9cebb1c665677d2ac
+        with:
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          environment: ${{ inputs.environment || 'prod' }}          
 
   report_script:
     if: ${{ always() }}
@@ -144,6 +170,19 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  approve_cleanup_runner:
+    name: Execute auto-approve for 'Cleanup Runner'
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs == null || github.event.inputs == 'prod' }}
+    steps:
+    
+      - name: Auto approve
+        uses: andrea-deri/auto-approve@042a1e58fa51acef74997dc9cebb1c665677d2ac
+        with:
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          environment: ${{ inputs.environment || 'prod' }}
 
   cleanup_runner:
     name: Cleanup Runner
