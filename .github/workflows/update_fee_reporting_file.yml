@@ -40,7 +40,6 @@ jobs:
           environment: ${{ inputs.environment || 'prod' }}
 
   create_runner:
-    if: ${{ always() }}
     name: Create Runner
     runs-on: ubuntu-22.04
     environment:
@@ -66,6 +65,7 @@ jobs:
 
 
   approve_report_script:
+    needs: [ create_runner ]
     name: Execute auto-approve for 'Report Script'
     runs-on: ubuntu-latest
     environment: 
@@ -79,7 +79,6 @@ jobs:
           environment: ${{ inputs.environment || 'prod' }}          
 
   report_script:
-    if: ${{ always() }}
     needs: [ create_runner ]
     name: Report ${{(github.event.inputs == null && 'prod') || inputs.environment }}
     runs-on: [ self-hosted, "${{ needs.create_runner.outputs.runner_name }}" ]
@@ -172,6 +171,7 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   approve_cleanup_runner:
+    needs: [ report_script ]
     name: Execute auto-approve for 'Cleanup Runner'
     runs-on: ubuntu-latest
     environment: 
