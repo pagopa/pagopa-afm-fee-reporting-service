@@ -501,4 +501,4 @@ merged_b: {} = merge_bundles(old_b, new_b)
 # creating file
 build_json_file(merged_b)
 # write file to s3 bucket
-#write_file_to_bucket()
+write_file_to_bucket()
