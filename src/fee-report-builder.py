@@ -335,7 +335,12 @@ def get_gec_bundles():
         altri_io: bool = payment_type in ["PPAL", "BPAY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
         altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
 
-
+        # getting configured polycy urls
+        psp_policy_url = json.loads(os.getenv("PSP_POLICY_URL"))
+        purl = str(item['urlPolicyPsp'])
+        if item['idPsp'] in psp_policy_url:
+            purl = psp_policy_url[item['idPsp']]
+        
         # nome_servizio management
         nome_servizio: str = str(item['name'])
         if str(item['paymentType']) in p_type:
@@ -349,14 +354,14 @@ def get_gec_bundles():
                         nome_servizio,                                  # nome_servizio
                         nome_servizio,                                  # descrizione_canale_mod_pag
                         nome_servizio,                                  # inf_desc_servizio
-                        str(item['urlPolicyPsp']),                      # inf_url_canale
-                        str(item['urlPolicyPsp']),                      # url_informazioni_psp
+                        purl,                                           # inf_url_canale
+                        purl,                                           # url_informazioni_psp
                         round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
                         round(float(item['maxPaymentAmount']) / 100, 2),# importp_massimo
                         round(float(item['paymentAmount']) / 100, 2),   # costo_fisso
-                        "N/A",                       # canale_mod_pag_code
+                        "N/A",                                          # canale_mod_pag_code
                         str(item['paymentType']),                       # tipo_vers_code
-                        "N/A",                            # canale_mod_pag
+                        "N/A",                                          # canale_mod_pag
                         on_us,
                         carte,
                         conto,
@@ -496,4 +501,4 @@ merged_b: {} = merge_bundles(old_b, new_b)
 # creating file
 build_json_file(merged_b)
 # write file to s3 bucket
-write_file_to_bucket()
+#write_file_to_bucket()
