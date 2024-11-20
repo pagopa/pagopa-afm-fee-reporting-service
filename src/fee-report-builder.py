@@ -120,6 +120,12 @@ def get_gec_bundles():
     # getting configured payment types
     psp_payment_types = os.getenv("PAYMENT_TYPES")
     p_type = json.loads(psp_payment_types)
+    
+    # getting configured polycy urls
+    psp_policy_url = json.loads(os.getenv("PSP_POLICY_URL"))
+
+    # getting psp with IdPsp to be replaced 
+    psp_wrong_id = json.loads(os.getenv("PSP_WRONG_ID"))
 
     print("[get_gec_bundles] Creating cosmos db client")
     client = cosmos_client.CosmosClient(ENDPOINT, {'masterKey': KEY})
@@ -162,11 +168,14 @@ def get_gec_bundles():
         altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
 
         # getting configured polycy urls
-        psp_policy_url = json.loads(os.getenv("PSP_POLICY_URL"))
         purl = str(item['urlPolicyPsp'])
         if item['idPsp'] in psp_policy_url:
             purl = psp_policy_url[item['idPsp']]
-        
+
+        id_psp = str(item['idPsp'])
+        if id_psp in psp_wrong_id:
+            id_psp = psp_wrong_id[id_psp]
+            
         # nome_servizio management
         nome_servizio: str = str(item['name'])
         if str(item['paymentType']) in p_type:
@@ -174,7 +183,7 @@ def get_gec_bundles():
         else:
             logger.info(f"[get_gec_bundles] no configured payment type found for [{str(item['paymentType'])}]")
 
-        bundle = Bundle(str(item['idPsp']),                             # psp_id
+        bundle = Bundle(str(id_psp),                                    # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
                         str(item['abi']),                               # codice_abi
                         nome_servizio,                                  # nome_servizio
