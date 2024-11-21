@@ -172,9 +172,12 @@ def get_gec_bundles():
         if item['idPsp'] in psp_policy_url:
             purl = psp_policy_url[item['idPsp']]
 
+        # manage id_psp and abi
         id_psp = str(item['idPsp'])
+        abi = str(item['abi'])
         if id_psp in psp_wrong_id:
             id_psp = psp_wrong_id[id_psp]
+            abi = id_psp
             
         # nome_servizio management
         nome_servizio: str = str(item['name'])
@@ -185,7 +188,7 @@ def get_gec_bundles():
 
         bundle = Bundle(str(id_psp),                                    # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
-                        str(item['abi']),                               # codice_abi
+                        str(abi),                                       # codice_abi
                         nome_servizio,                                  # nome_servizio
                         nome_servizio,                                  # descrizione_canale_mod_pag
                         nome_servizio,                                  # inf_desc_servizio
