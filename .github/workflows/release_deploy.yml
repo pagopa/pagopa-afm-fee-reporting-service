@@ -125,10 +125,10 @@ jobs:
       version: ${{ steps.release.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -146,7 +146,7 @@ jobs:
     steps:
       - name: Build and Push
         id: semver
-        uses: pagopa/github-actions-template/ghcr-build-push@v1.5.4
+        uses: pagopa/github-actions-template/ghcr-build-push@d91a1fd0b913c9830589be5d86cdb71c90813fae # v1.5.4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.release.outputs.version }}
@@ -168,7 +168,7 @@ jobs:
     steps:
       - name: Report Status
         if: ${{ needs.setup.outputs.environment == 'prod' }}
-        uses: ravsamhq/notify-slack-action@v2
+        uses: ravsamhq/notify-slack-action@be814b201e233b2dc673608aa46e5447c8ab13f2 # v2
         with:
           status: ${{ needs.deploy_aks.result }}
           token: ${{ secrets.GITHUB_TOKEN }}
