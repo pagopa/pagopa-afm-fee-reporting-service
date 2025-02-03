@@ -132,7 +132,7 @@ def get_gec_bundles():
     database = client.get_database_client("db")
     container = database.get_container_client("validbundles")
 
-    sql = str("select * from c where c.type=\"GLOBAL\"")
+    sql = str("select * from c where c.type=\"GLOBAL\" and (c.transferCategoryList = null or c.transferCategoryList = [])")
     logger.info(f"[get_gec_bundles] Executing query [{sql}]")
 
     # Enumerate the returned items
