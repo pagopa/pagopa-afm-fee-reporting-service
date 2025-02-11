@@ -132,7 +132,7 @@ def get_gec_bundles():
     database = client.get_database_client("db")
     container = database.get_container_client("validbundles")
 
-    sql = str("select * from c where c.type=\"GLOBAL\"")
+    sql = str("select * from c where c.type=\"GLOBAL\" and (c.transferCategoryList = null or c.transferCategoryList = [])")
     logger.info(f"[get_gec_bundles] Executing query [{sql}]")
 
     # Enumerate the returned items
@@ -164,7 +164,7 @@ def get_gec_bundles():
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
-        altri_io: bool = payment_type in ["PPAL", "BPAY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
+        altri_io: bool = payment_type in ["PPAL", "BPAY", "SATY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
         altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
 
         # getting configured polycy urls
