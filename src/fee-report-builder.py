@@ -6,6 +6,7 @@ import boto3
 import azure.cosmos.cosmos_client as cosmos_client
 import psycopg
 import decimal
+from datetime import datetime
 
 
 class Bundle:
@@ -32,7 +33,7 @@ class Bundle:
                  conto_app,
                  carte_app,
                  touchpoint):
-      
+
         self.psp_id = psp_id
         self.psp_rag_soc = psp_rag_soc
         self.codice_abi = codice_abi
@@ -87,18 +88,10 @@ class Bundle:
         }
 
 
-def bundles_equal(b1: Bundle, b2: Bundle) -> bool:
-    return (b1.psp_id == b2.psp_id
-            and b1.importo_massimo == b2.importo_massimo
-            and b1.importo_minimo == b2.importo_minimo
-            and b1.on_us == b2.on_us
-            and b1.tipo_vers_cod == b2.tipo_vers_cod)
-
-
 def get_pg_connection():
     logger.info("[get_pg_connection] getting postgres connection parameters")
     db_user = os.getenv("DB_USER")
-    db_password = os.getenv("DB_PASSWORD")
+    db_password = os.getenv("CFG_DB_PASSWORD")
     db_name = os.getenv("DB_NAME")
     db_host = os.getenv("DB_HOST")
     db_port = os.getenv("DB_PORT")
@@ -115,177 +108,10 @@ def get_pg_connection():
     return connection
 
 
-def get_wisp_bundles(connection):
-
-    # read psp blacklisted
-    psp_blacklist = os.getenv("PSP_BLACKLIST")
-    psp_blacklist = psp_blacklist.split(",")
-
-    # read psp abi table
-    psp_abi_code = os.getenv("PSP_ABI_CODE")
-    psp_code = json.loads(psp_abi_code)
-
-    # get cdi_master data
-    logger.info(f"[get_wisp_bundles] getting cdi master data")
-    cdi_info = {}
-    db_query = """select 
-            p.id_psp,
-            cm.data_inizio_validita,
-            cm.url_informazioni_psp,
-            cm.url_informativa_psp
-        from
-            cdi_master cm,
-            psp p 
-        where 1=1     
-            and p.obj_id = cm.fk_psp
-            and cm.data_inizio_validita = (select max(cm2.data_inizio_validita) from cdi_master cm2, psp p2 where cm2.fk_psp = p2.obj_id and p2.id_psp = p.id_psp)
-        order by p.id_psp asc"""
-
-    logger.info(f"[get_wisp_bundles] executing query [{db_query}]")
-    cursor = connection.cursor()
-    cursor.execute(db_query)
-    dataset = cursor.fetchall()
-    for data in dataset:
-        psp_id = data[0]
-        psp_url = data[2]
-        cdi_info[psp_id] = psp_url
-
-    logger.info("[get_wisp_bundles] CDI data loaded")
-
-    logger.info("[get_wisp_bundles] loading bundles data")
-    bundles = []
-    db_query = """select
-            es.psp_id,
-            es.psp_rag_soc,
-            es.codice_abi,
-            es.nome_servizio,
-            es.canale_mod_pag,
-            es.inf_desc_serv,
-            es.inf_url_canale,
-            es.importo_minimo,
-            es.importo_massimo,
-            es.costo_fisso,
-            es.tipo_vers_cod,
-            es.canale_id,
-            es.canale_app,
-            es.carrello_carte,
-            es.flag_io
-        from
-            elenco_servizi es
-        where 1=1
-            and es.codice_lingua = 'IT'
-            and es.psp_id NOT LIKE 'CHARITY%'
-            and es.codice_convenzione IS NULL
-        ORDER BY es.psp_rag_soc"""
-
-    logger.info(f"[get_wisp_bundles] executing query [{db_query}]")
-    cursor = connection.cursor()
-    cursor.execute(db_query)
-    dataset = cursor.fetchall()
-    count = 0
-    logger.info(f"[get_wisp_bundles] creating wisp bundles")
-    for data in dataset:
-
-        if data[3] == "Paga con Postepay":
-            print("trovato")
-
-        if str(data[0]) in psp_blacklist:
-            continue
-
-        if count % 100 == 0:
-            logger.info(f"[get_wisp_bundles] bundle [{str(count)}]")
-
-        # descrizione_canale_mod_pag management
-        canale_mod_pag_code = data[4]
-        descrizione_canale_mod_pag = ""
-        if canale_mod_pag_code == 1:
-            descrizione_canale_mod_pag = "Modello di pagamento immediato multibeneficiario"
-        elif canale_mod_pag_code == 2:
-            descrizione_canale_mod_pag = "Modello di pagamento differito"
-        elif canale_mod_pag_code == 0:
-            descrizione_canale_mod_pag = "Modello di pagamento immediato (con redirezione)"
-        elif canale_mod_pag_code == 4:
-            descrizione_canale_mod_pag = "Modello di pagamento attivato presso il psp"
-
-        # canale_mod_pag management
-        canale_mod_pag = ""
-        if canale_mod_pag_code == 1:
-            canale_mod_pag = "pagopa"
-        elif canale_mod_pag_code == 2:
-            canale_mod_pag = "pagopa"
-        elif canale_mod_pag_code == 0:
-            canale_mod_pag = "pagopa"
-        elif canale_mod_pag_code == 4:
-            canale_mod_pag = "psp"
-
-        # url_informazioni_psp management
-        url_informazioni_psp = ""
-        if data[0] in cdi_info:
-            url_informazioni_psp = cdi_info[data[0]]
-
-        # onus management
-        channel: str = data[11]
-        on_us: bool = channel.endswith("_ONUS")
-
-        # carte and conto management
-        payment_type: str = data[10]
-        canale_app: str = data[12]
-        carrello_carte: str = data[13]
-        carte: bool = payment_type == "CP" and carrello_carte == "Y" and canale_app == "N"
-        conto: bool = payment_type in ['BBT', 'BP', 'MYBK', 'AD'] and canale_app == 'N'
-        conto_app: bool = payment_type in ["MYBK"]
-        # at the moment carte_app fixed to True
-        # io: str = str(data[14])
-        # carte_app: bool = carte and io.lower() == "y"
-        carte_app: bool = carte
-
-        # altri_io and altri_wisp management
-        altri_io: bool = (canale_app == "Y" and payment_type == "PPAL") or (payment_type == "BPAY")
-        altri_wisp: bool = payment_type != "PPAL" and canale_app == 'Y'
-
-        # ABI code management
-        abi = data[2]
-        id_psp = data[0]
-        if abi is None or abi == "" or str(abi).lower() == "tbd":
-            if id_psp in psp_code:
-                abi = psp_code[id_psp]
-                logger.info(f"[get_wisp_bundles] fixed abi for psp [{id_psp}]")
-
-        bundle = Bundle(data[0],                    # idPsp
-                        data[1],                    # psp_rag_soc
-                        abi,                        # codice_abi
-                        data[3],                    # nome_servizio
-                        descrizione_canale_mod_pag, # descrizione_canale_mod_pag
-                        data[5],                    # inf_desc_serv
-                        data[6],                    # inf_url_canale
-                        url_informazioni_psp,       # url_informazioni_psp
-                        data[7],                    # importo_minimo
-                        data[8],                    # importo_massimo
-                        data[9],                    # costo_fisso
-                        canale_mod_pag_code,        # canale_mod_pag_code
-                        payment_type,               # tipo_vers_cod
-                        canale_mod_pag,             # canale_mod_pag
-                        on_us,                      # on_us
-                        carte,                      # carte
-                        conto,                      # conto
-                        altri_wisp,                 # altri_wisp
-                        altri_io,                   # altri_io
-                        False,                      # is_duplicated
-                        conto_app,
-                        carte_app,
-                        "NULL")
-        
-        bundles.append(bundle)
-        count += 1
-    cursor.close()
-    logger.info(f"[get_wisp_bundles] wisp bundles created")
-    return bundles
-
-
 def get_gec_bundles():
     # getting cosmos db configuration
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
-    KEY = os.environ["COSMOS_KEY"]
+    KEY = os.environ["AFM_COSMOS_KEY"]
 
     # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
@@ -294,13 +120,19 @@ def get_gec_bundles():
     # getting configured payment types
     psp_payment_types = os.getenv("PAYMENT_TYPES")
     p_type = json.loads(psp_payment_types)
+    
+    # getting configured polycy urls
+    psp_policy_url = json.loads(os.getenv("PSP_POLICY_URL"))
+
+    # getting psp with IdPsp to be replaced 
+    psp_wrong_id = json.loads(os.getenv("PSP_WRONG_ID"))
 
     print("[get_gec_bundles] Creating cosmos db client")
     client = cosmos_client.CosmosClient(ENDPOINT, {'masterKey': KEY})
     database = client.get_database_client("db")
     container = database.get_container_client("validbundles")
 
-    sql = str("select * from c where c.type=\"GLOBAL\"")
+    sql = str("select * from c where c.type=\"GLOBAL\" and (c.transferCategoryList = null or c.transferCategoryList = [])")
     logger.info(f"[get_gec_bundles] Executing query [{sql}]")
 
     # Enumerate the returned items
@@ -332,10 +164,21 @@ def get_gec_bundles():
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
-        altri_io: bool = payment_type in ["PPAL", "BPAY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
+        altri_io: bool = payment_type in ["PPAL", "BPAY", "SATY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
         altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
 
+        # getting configured polycy urls
+        purl = str(item['urlPolicyPsp'])
+        if item['idPsp'] in psp_policy_url:
+            purl = psp_policy_url[item['idPsp']]
 
+        # manage id_psp and abi
+        id_psp = str(item['idPsp'])
+        abi = str(item['abi'])
+        if id_psp in psp_wrong_id:
+            id_psp = psp_wrong_id[id_psp]
+            abi = id_psp
+            
         # nome_servizio management
         nome_servizio: str = str(item['name'])
         if str(item['paymentType']) in p_type:
@@ -343,20 +186,20 @@ def get_gec_bundles():
         else:
             logger.info(f"[get_gec_bundles] no configured payment type found for [{str(item['paymentType'])}]")
 
-        bundle = Bundle(str(item['idPsp']),                             # psp_id
+        bundle = Bundle(str(id_psp),                                    # psp_id
                         str(item['pspBusinessName']),                   # psp_rag_soc
-                        str(item['abi']),                               # codice_abi
-                        str(item['name']),                              # nome_servizio
-                        str(item['description']),                       # descrizione_canale_mod_pag
-                        str(item['description']),                       # inf_desc_servizio
-                        str(item['urlPolicyPsp']),                      # inf_url_canale
-                        str(item['urlPolicyPsp']),                      # url_informazioni_psp
+                        str(abi),                                       # codice_abi
+                        nome_servizio,                                  # nome_servizio
+                        nome_servizio,                                  # descrizione_canale_mod_pag
+                        nome_servizio,                                  # inf_desc_servizio
+                        purl,                                           # inf_url_canale
+                        purl,                                           # url_informazioni_psp
                         round(float(item['minPaymentAmount']) / 100, 2),# importo_minimo
                         round(float(item['maxPaymentAmount']) / 100, 2),# importp_massimo
                         round(float(item['paymentAmount']) / 100, 2),   # costo_fisso
-                        "N/A",                       # canale_mod_pag_code
+                        "N/A",                                          # canale_mod_pag_code
                         str(item['paymentType']),                       # tipo_vers_code
-                        "N/A",                            # canale_mod_pag
+                        "N/A",                                          # canale_mod_pag
                         on_us,
                         carte,
                         conto,
@@ -367,19 +210,19 @@ def get_gec_bundles():
                         carte_app,
                         touchpoint)
         count = count + 1
-        bundles.append(bundle)
+        bundles.append(bundle.serialize_bundle())
 
     logger.info("[get_gec_bundles] bundles creation completed")
     return bundles
 
 
-def build_json_file(bundles: {}):
+def build_json_file(bundles: []):
     logger.info("[build_json_file] preparing file content")
-    values = list(bundles.values())
+    #values = list(bundles.values())
     file_content = {
-        "last_Run": "20240730",
+        "last_Run": datetime.now().strftime("%Y%m%d"),
         "notebookVersion": "0.4.0",
-        "content": values
+        "content": bundles
     }
     json_file_content = json.dumps(file_content)
     logger.info("[build_json_file] file content created")
@@ -393,45 +236,6 @@ def build_json_file(bundles: {}):
     json_file.flush()
     json_file.close()
     logger.info("[build_json_file] file created")
-
-
-def merge_bundles(old_bundles, new_bundles):
-    distinct_bundles = {}
-
-    # dict used to not duplicate bundles from old and new management in case of not matching amount range
-    psp_dict = ["SATYLUL1_BBT",
-                "PAYTITM1_PPAL",
-                "BCITITMM_JIF",
-                "PPAYITR1XXX_BBT"] # the list contains blacklisted PSP/payment type tuple
-
-    for item in new_bundles:
-        bundle: Bundle = item
-        key = (str(bundle.psp_id) + "_" +
-               str(int(bundle.importo_minimo)) + "_" +
-               str(int(bundle.importo_massimo)) + "_" +
-               str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod) + "_" + str(bundle.touchpoint))
-
-        bundle_key: str = bundle.psp_id + "_" + bundle.tipo_vers_cod
-        if bundle_key not in psp_dict:
-            psp_dict.append(bundle.psp_id + "_" + bundle.tipo_vers_cod)
-
-        distinct_bundles[key] = bundle.serialize_bundle()
-
-    for item in old_bundles:
-        bundle: Bundle = item
-        bundle_key: str = bundle.psp_id + "_" + bundle.tipo_vers_cod
-
-        if bundle_key not in psp_dict:
-            key = (str(bundle.psp_id) + "_" +
-                   str(int(bundle.importo_minimo)) + "_" +
-                   str(int(bundle.importo_massimo)) + "_" +
-                   str(bundle.on_us) + "_" + str(bundle.tipo_vers_cod))
-
-            distinct_bundles[key] = bundle.serialize_bundle()
-        else:
-            logger.info(f"[merge_bundles] found old bundle for psp onboarded on GEC, PSPId [{bundle.psp_id}]")
-
-    return distinct_bundles
 
 
 def write_file_to_bucket():
@@ -487,13 +291,12 @@ logging.basicConfig(encoding='utf-8', level=logging.INFO,
 
 # getting pg connection
 pg_conn = get_pg_connection()
-# getting old bundles
-old_b: [] = get_wisp_bundles(pg_conn)
 # getting new bundles
 new_b: [] = get_gec_bundles()
 # merging old and new bundles
-merged_b: {} = merge_bundles(old_b, new_b)
+#merged_b: {} = merge_bundles(old_b, new_b)
 # creating file
-build_json_file(merged_b)
+#build_json_file(merged_b)
+build_json_file(new_b)
 # write file to s3 bucket
 write_file_to_bucket()

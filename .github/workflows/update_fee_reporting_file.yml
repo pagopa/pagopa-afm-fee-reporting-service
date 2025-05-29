@@ -1,0 +1,206 @@
+name: updateFeeReport
+on:
+  schedule:
+    - cron: '0 1 * * *'
+    
+  workflow_dispatch:
+    inputs:
+      environment:
+        required: true
+        type: choice
+        description: Select the Environment
+        options:
+          - uat
+          - prod
+        default: prod
+
+      notify:
+        description: 'notify report results'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+  deployments: write
+
+jobs:
+  approve_create_runner:
+    name: Execute auto-approve for 'Create Runner'
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs == null || github.event.inputs == 'prod' }}
+    steps:
+    
+      - name: Auto approve
+        uses: andrea-deri/auto-approve@042a1e58fa51acef74997dc9cebb1c665677d2ac
+        with:
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          environment: ${{ inputs.environment || 'prod' }}
+
+  create_runner:
+    name: Create Runner
+    runs-on: ubuntu-22.04
+    environment:
+      name: ${{(github.event.inputs == null && 'prod') || inputs.environment }}
+    outputs:
+      runner_name: ${{ steps.create_github_runner.outputs.runner_name }}
+    steps:
+      - name: Create GitHub Runner
+        id: create_github_runner
+        uses: pagopa/eng-github-actions-iac-template/azure/github-self-hosted-runner-azure-create-action@main
+        with:
+          client_id: ${{ secrets.CLIENT_ID }}
+          tenant_id: ${{ secrets.TENANT_ID }}
+          subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+          container_app_environment_name: ${{ vars.CONTAINER_APP_ENVIRONMENT_NAME }}
+          resource_group_name: ${{ vars.CONTAINER_APP_ENVIRONMENT_RESOURCE_GROUP_NAME }} # RG of the runner
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          self_hosted_runner_image_tag: "latest"
+      - name: Install dependencies
+        run: |
+          export RUNNER_ALLOW_RUNASROOT="1"
+          sudo apt-get update && sudo apt-get install -y libpq-dev
+
+
+  approve_report_script:
+    needs: [ create_runner ]
+    name: Execute auto-approve for 'Report Script'
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs == null || github.event.inputs == 'prod' }}
+    steps:
+    
+      - name: Auto approve
+        uses: andrea-deri/auto-approve@042a1e58fa51acef74997dc9cebb1c665677d2ac
+        with:
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          environment: ${{ inputs.environment || 'prod' }}          
+
+  report_script:
+    needs: [ create_runner ]
+    name: Report ${{(github.event.inputs == null && 'prod') || inputs.environment }}
+    runs-on: [ self-hosted, "${{ needs.create_runner.outputs.runner_name }}" ]
+    environment: ${{(github.event.inputs == null && 'prod') || inputs.environment }}
+    steps:
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@1f9a0c22da41e6ebfa534300ef656657ea2c6707
+
+      - name: Install dependencies
+        run: |
+          pip install -r ./src/requirements.txt
+
+      - name: Login
+        id: login
+        # from https://github.com/Azure/login/commits/master
+        uses: azure/login@92a5484dfaf04ca78a94597f4f19fea633851fa2
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+
+      - name: Run reports
+        shell: bash
+        run: |
+          export AFM_COSMOS_KEY=${{ secrets.AFM_COSMOS_KEY }}
+          export CFG_DB_PASSWORD=${{ secrets.CFG_DB_PASSWORD }}
+          export S3_ACCESS_KEY_ID=${{ secrets.S3_ACCESS_KEY_ID }}
+          export S3_ACCESS_KEY_SECRET=${{ secrets.S3_ACCESS_KEY_SECRET }}
+          export S3_BUCKET_NAME="pagopa-afm-p-st-fee"
+          export COSMOS_ENDPOINT="https://pagopa-p-weu-afm-marketplace-cosmos-account.documents.azure.com:443/"
+          export DB_HOST="pagopa-p-weu-nodo-flexible-postgresql.postgres.database.azure.com"
+          export DB_NAME="nodo"
+          export DB_PORT="6432"
+          export DB_USER="cfg"
+          export PAYMENT_TYPES="{\"SATY\": \"Satispay\",\"RPIC\": \"Conto Intesa Sanpaolo\",\"RICO\": \"Pago in Conto IConto\",\"RBPS\": \"Conto Banca Popolare di Sondrio\",\"RBPR\": \"Conto BancoPosta\",\"RBPP\": \"Paga con Postepay\",\"RBPB\": \"Conto BancoPostaImpresa\",\"PPAL\": \"PayPal\",\"PO\": \"Pagamento attivato presso PSP\",\"OBEP\": \"Online Banking Electronic Payment\",\"MYBK\": \"MyBank\",\"JIF\": \"Jiffy\",\"CP\": \"Carta di debito o credito\",\"BPAY\": \"Bancomat Pay\",\"BP\": \"Bollettino postale\",\"BBT\": \"Bonifico bancario telematico\",\"APPL\": \"Apple Pay\",\"AD\": \"Addebito diretto\",\"GOOG\": \"Google Pay\" }"
+          export PSP_ABI_CODE="{  \"CRPPIT2PXXX\": \"06230\",  \"BPPNIT2PXXX\": \"05336\",  \"BLPIIT21\": \"03083\",  \"RZSBIT2B\": \"03493\",  \"RZSBIT21001\": \"08112\",  \"RZSBIT21003\": \"08081\",  \"RZSBIT21005\": \"08035\",  \"RZSBIT21006\": \"08162\",  \"RZSBIT21007\": \"08307\",  \"RZSBIT21042\": \"08269\",  \"RZSBIT21036\": \"08249\",  \"RZSBIT21055\": \"08238\",  \"RZSBIT21009\": \"08020\",  \"RZSBIT21011\": \"08056\",  \"RZSBIT21012\": \"08117\",  \"RZSBIT21014\": \"08115\",  \"RZSBIT21015\": \"08110\",  \"RZSBIT21018\": \"08134\",  \"RZSBIT21019\": \"08133\",  \"RZSBIT21022\": \"08157\",  \"RZSBIT21023\": \"08302\",  \"RZSBIT21024\": \"08066\",  \"RZSBIT21025\": \"08175\",  \"RZSBIT21026\": \"08998\",  \"RZSBIT21027\": \"08183\",  \"RZSBIT21031\": \"08220\",  \"RZSBIT21032\": \"08233\",  \"RZSBIT21033\": \"08234\",  \"RZSBIT21034\": \"08244\",  \"RZSBIT21510\": \"08065\",  \"RZSBIT21040\": \"08285\",  \"RZSBIT21044\": \"08273\",  \"RZSBIT21045\": \"08273\",  \"RZSBIT21138\": \"08080\",  \"RZSBIT21048\": \"08255\",  \"RZSBIT21039\": \"08231\",  \"RZSBIT21013\": \"08307\",  \"RZSBIT21317\": \"08114\",  \"RZSBIT21049\": \"08086\",  \"RZSBIT21050\": \"08295\",  \"RZSBIT21052\": \"08148\",  \"RZSBIT21054\": \"08182\",  \"NIPSITR1\": \"36080\",  \"ITBBITM1\": \"32532\",  \"SENVITT1\": \"03211\",  \"POCAIT3C\": \"05372\",  \"BPBAIT3B\": \"05424\",  \"BAPPIT21\": \"05034\",  \"SELBIT2B\": \"03268\",  \"SEPFIT31XXX\": \"36063\",  \"CRBZIT2B\": \"06045\",  \"CRFEIT3F\": \"06150\",  \"RZSBIT21008\": \"08010\",  \"CIPYIT31\": \"36024\",  \"CIPYIT31K\": \"36024\" }"
+          export PSP_BLACKLIST="ABI14156,POCAIT3C"
+          export PSP_POLICY_URL="{\"IFSPIT21\": \"https://www.iconto.infocamere.it/idpw/info/services-pagoPA\", \"UNCRITMM\": \"https://trasparenza.unicredit.it/pdfprod/GP19-SERVIZIO-DI-PAGAMENTO-DIGITALE-A-FAVORE-DELLA-PUBBLICAAMMINISTRAZIONE_IT.pdf\", \"SATYLUL1\": \"https://static-www-satispay-com.s3.eu-west-1.amazonaws.com/info/scheda+informativa+bollettini_it-it.pdf\", \"BCITITMM\": \"https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1356.pdf\", \"PASCITMM\": \"http://www.gruppo.mps.it/ap_trasparenzaweb/Documenti%5C103049466.pdf\", \"AMREX\": \"https://www.americanexpress.com/it/chisiamo/termini-e-condizioni.html\", \"BPPIITRRXXX\": \"https://www.poste.it/resources/bancoposta/pdf/trasparenza/FI_BCCP.pdf\", \"PPAYITR1XXX\": \"https://www.poste.it/resources/bancoposta/pdf/trasparenza/FI_SCT_PP.pdf\"}"
+          export PSP_WRONG_ID="{\"WOLLNLB1\": \"WOLLN\"}"
+          export REPORT_FILE_NAME="output_elenco_servizi.json"
+          
+          cd ./src
+          python fee-report-builder.py
+
+      - name: Create success payload
+        if: ${{ success() && (inputs.notify || github.event_name == 'schedule') }}
+        run: |
+          echo '{
+            "text": "✅ *Workflow completato con successo.*",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "✅ *Nuovo report generato* :point_right: https://pagopa-afm-p-st-fee.s3.eu-central-1.amazonaws.com/output_elenco_servizi.json"
+                }
+              }
+            ]
+          }' > ./src/payload.json
+
+      - name: Create failure payload
+        if: ${{ failure() && (inputs.notify || github.event_name == 'schedule') }}
+        run: |
+          echo '{
+            "text": "❌ *Errore* Il workflow è fallito.",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *Si è verificato un errore durante l'esecuzione del job*"
+                }
+              }
+            ]
+          }' > ./src/payload.json
+
+      - name: Send notification to Slack
+        id: slack
+        if: ${{ (success() || failure()) && (inputs.notify != 'false' || github.event_name == 'schedule') }}
+        uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 #v1.24.0
+        with:
+          payload-file-path: "./src/payload.json"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  approve_cleanup_runner:
+    needs: [ report_script ]
+    name: Execute auto-approve for 'Cleanup Runner'
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs == null || github.event.inputs == 'prod' }}
+    steps:
+    
+      - name: Auto approve
+        uses: andrea-deri/auto-approve@042a1e58fa51acef74997dc9cebb1c665677d2ac
+        with:
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
+          environment: ${{ inputs.environment || 'prod' }}
+
+  cleanup_runner:
+    name: Cleanup Runner
+    needs: [ create_runner, report_script ]
+    if: ${{ always() }}
+    runs-on: ubuntu-22.04
+    environment: ${{(github.event.inputs == null && 'uat') || inputs.environment }}
+    steps:
+      - name: Cleanup GitHub Runner
+        id: cleanup_github_runner
+        # from https://github.com/pagopa/eng-github-actions-iac-template/tree/main/azure/github-self-hosted-runner-azure-cleanup-action
+        uses: pagopa/eng-github-actions-iac-template/azure/github-self-hosted-runner-azure-cleanup-action@0ee2f58fd46d10ac7f00bce4304b98db3dbdbe9a
+        with:
+          client_id: ${{ secrets.CLIENT_ID }}
+          tenant_id: ${{ secrets.TENANT_ID }}
+          subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+          resource_group_name: ${{ vars.CONTAINER_APP_ENVIRONMENT_RESOURCE_GROUP_NAME }}
+          runner_name: ${{ needs.create_runner.outputs.runner_name }}
+          pat_token: ${{ secrets.BOT_TOKEN_GITHUB }}
