@@ -16,7 +16,7 @@ envConfig:
   REPORT_FILE_NAME: output_elenco_servizi.json
   S3_BUCKET_NAME: pagopa-afm-p-st-fee
 
-envSecret:
+envSecrets:
   COSMOS_KEY: afm-fee-reporting-p-cosmos-key
   DB_PASSWORD: db-cfg-password-read
   S3_ACCESS_KEY_ID: afm-fee-reporting-p-s3-key-id
@@ -25,3 +25,8 @@ envSecret:
 keyvault:
   name: "pagopa-p-afm-kv"
   tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
+
+serviceAccount:
+  name: "afm-workload-identity"
+azure:
+  workloadIdentityClientId: <workload-identity-client-id-set-automatically-by-gha>
