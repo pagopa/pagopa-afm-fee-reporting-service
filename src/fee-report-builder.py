@@ -164,7 +164,7 @@ def get_gec_bundles():
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
-        altri_io: bool = payment_type in ["PPAL", "BPAY", "SATY"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
+        altri_io: bool = payment_type in ["PPAL", "BPAY", "SATY", "KLRN", "APPL", "RBPP"] and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
         altri_wisp: bool = payment_type != "CP" and not conto and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
 
         # getting configured polycy urls
@@ -299,4 +299,4 @@ new_b: [] = get_gec_bundles()
 #build_json_file(merged_b)
 build_json_file(new_b)
 # write file to s3 bucket
-write_file_to_bucket()
+# write_file_to_bucket()
