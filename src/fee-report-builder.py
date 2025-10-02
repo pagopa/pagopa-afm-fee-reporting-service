@@ -299,4 +299,4 @@ new_b: [] = get_gec_bundles()
 #build_json_file(merged_b)
 build_json_file(new_b)
 # write file to s3 bucket
-# write_file_to_bucket()
+write_file_to_bucket()
