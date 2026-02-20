@@ -128,7 +128,11 @@ def get_gec_bundles():
     psp_wrong_id = json.loads(os.getenv("PSP_WRONG_ID"))
 
     print("[get_gec_bundles] Creating cosmos db client")
-    client = cosmos_client.CosmosClient(ENDPOINT, {'masterKey': KEY})
+    client = cosmos_client.CosmosClient(
+        ENDPOINT, 
+        {'masterKey': KEY},
+        preferred_locations=["North Europe", "West Europe"]
+    )
     database = client.get_database_client("db")
     container = database.get_container_client("validbundles")
 
