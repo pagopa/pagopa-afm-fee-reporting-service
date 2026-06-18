@@ -113,6 +113,10 @@ def get_gec_bundles():
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
     KEY = os.environ["AFM_COSMOS_KEY"]
 
+    # PSP to dedup
+    psp_to_dedup = os.environ["PSP_DEDUP"]
+    psp_to_dedup = psp_to_dedup.split(",")
+
     # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
     psp_blacklist = psp_blacklist.split(",")
@@ -143,11 +147,17 @@ def get_gec_bundles():
     logger.info("[get_gec_bundles] creating bundles")
     count = 0
     bundles = []
+    seen_psp_ids = set()
     for item in container.query_items(
             query=sql,
             enable_cross_partition_query=True):
 
         if str(item['idPsp']) in psp_blacklist:
+            continue
+
+        # if the PSP is to dedup and it's already present in bundles, skip the item
+        # almeno un bundle, saltiamo le occorrenze successive
+        if str(item['idPsp']) in psp_to_dedup and str(item['idPsp']) in seen_psp_ids:
             continue
 
         if count % 100 == 0:
@@ -215,6 +225,7 @@ def get_gec_bundles():
                         touchpoint)
         count = count + 1
         bundles.append(bundle.serialize_bundle())
+        seen_psp_ids.add(str(item['idPsp']))
 
     logger.info("[get_gec_bundles] bundles creation completed")
     return bundles

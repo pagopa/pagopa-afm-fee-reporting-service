@@ -125,7 +125,8 @@ jobs:
           export PSP_BLACKLIST="ABI14156,POCAIT3C"
           export PSP_POLICY_URL="{\"IFSPIT21\": \"https://www.iconto.infocamere.it/idpw/info/services-pagoPA\", \"UNCRITMM\": \"https://trasparenza.unicredit.it/pdfprod/GP19-SERVIZIO-DI-PAGAMENTO-DIGITALE-A-FAVORE-DELLA-PUBBLICAAMMINISTRAZIONE_IT.pdf\", \"SATYLUL1\": \"https://static-www-satispay-com.s3.eu-west-1.amazonaws.com/info/scheda+informativa+bollettini_it-it.pdf\", \"BCITITMM\": \"https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1356.pdf\", \"PASCITMM\": \"http://www.gruppo.mps.it/ap_trasparenzaweb/Documenti%5C103049466.pdf\", \"AMREX\": \"https://www.americanexpress.com/it/chisiamo/termini-e-condizioni.html\", \"BPPIITRRXXX\": \"https://www.poste.it/resources/bancoposta/pdf/trasparenza/FI_BCCP.pdf\", \"PPAYITR1XXX\": \"https://www.poste.it/resources/bancoposta/pdf/trasparenza/FI_SCT_PP.pdf\", \"SELBIT2B\": \"https://www.sella.it/SSRDocumentDisplayer?dtdPG=890_00_BSE\"}"
           export PSP_WRONG_ID="{\"WOLLNLB1\": \"WOLLN\", \"SATYLUL1\": \"SAPAY\"}"
-          export REPORT_FILE_NAME="output_elenco_servizi.json" 
+          export REPORT_FILE_NAME="output_elenco_servizi.json"
+          export PSP_DEDUP="ABI36935"
           
           cd ./src
           python fee-report-builder.py
