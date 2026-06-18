@@ -113,6 +113,10 @@ def get_gec_bundles():
     ENDPOINT = os.environ["COSMOS_ENDPOINT"]
     KEY = os.environ["AFM_COSMOS_KEY"]
 
+    # PSP to dedup
+    psp_to_dedup = os.environ["PSP_DEDUP"]
+    psp_to_dedup = psp_to_dedup.split(",")
+
     # getting psp blacklist
     psp_blacklist = os.environ["PSP_BLACKLIST"]
     psp_blacklist = psp_blacklist.split(",")
@@ -143,11 +147,16 @@ def get_gec_bundles():
     logger.info("[get_gec_bundles] creating bundles")
     count = 0
     bundles = []
+    seen_psp_ids = set()
     for item in container.query_items(
             query=sql,
             enable_cross_partition_query=True):
 
         if str(item['idPsp']) in psp_blacklist:
+            continue
+
+        # if the PSP is to dedup and it's already present in bundles, skip the item
+        if str(item['idPsp']) in psp_to_dedup and str(item['idPsp']) in seen_psp_ids:
             continue
 
         if count % 100 == 0:
@@ -163,8 +172,8 @@ def get_gec_bundles():
         touchpoint: str = str(item['touchpoint'])
         carte: bool = payment_type == "CP" and cart and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
         carte_app: bool = payment_type == "CP" and cart and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
-        conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
-        conto_app: bool = payment_type in ["MYBK"]
+        conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB", "RFPB"]
+        conto_app: bool = payment_type in ["MYBK", "RFPB"]
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
@@ -215,6 +224,7 @@ def get_gec_bundles():
                         touchpoint)
         count = count + 1
         bundles.append(bundle.serialize_bundle())
+        seen_psp_ids.add(str(item['idPsp']))
 
     logger.info("[get_gec_bundles] bundles creation completed")
     return bundles
