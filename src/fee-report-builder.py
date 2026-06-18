@@ -156,7 +156,6 @@ def get_gec_bundles():
             continue
 
         # if the PSP is to dedup and it's already present in bundles, skip the item
-        # almeno un bundle, saltiamo le occorrenze successive
         if str(item['idPsp']) in psp_to_dedup and str(item['idPsp']) in seen_psp_ids:
             continue
 
