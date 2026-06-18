@@ -163,8 +163,8 @@ def get_gec_bundles():
         touchpoint: str = str(item['touchpoint'])
         carte: bool = payment_type == "CP" and cart and (touchpoint.lower() == "checkout" or touchpoint.lower() == "any")
         carte_app: bool = payment_type == "CP" and cart and (touchpoint.lower() == "io" or touchpoint.lower() == "any")
-        conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB"]
-        conto_app: bool = payment_type in ["MYBK"]
+        conto: bool = payment_type in ["BBT", "BP", "MYBK", "AD", "RPIC", "RICO", "RBPS", "RBPR", "RBPP", "RBPB", "RFPB"]
+        conto_app: bool = payment_type in ["MYBK", "RFPB"]
 
         # altri_io and altri_wisp management
         #- AppIO - Carte PPAL MYBK BancomatPay
